@@ -1,0 +1,395 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  InvenTrack — Cloud-Based Inventory Management System
+  Serverless architecture on AWS using Lambda, API Gateway,
+  DynamoDB, SNS, CloudWatch, Cognito and EventBridge.
+  Author: Ojasvi Mohapatra | Internship Project | F13 Technologies
+
+# ═══════════════════════════════════════════════
+# GLOBAL SETTINGS (apply to all Lambda functions)
+# ═══════════════════════════════════════════════
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 30
+    MemorySize: 128
+    Region: ap-south-1
+    Environment:
+      Variables:
+        PRODUCTS_TABLE:     !Ref ProductsTable
+        TRANSACTIONS_TABLE: !Ref TransactionsTable
+        ANALYTICS_TABLE:    !Ref AnalyticsTable
+        SNS_TOPIC_ARN:      !Ref LowStockAlertTopic
+    Layers:
+      - !Ref CommonLayer
+
+# ═══════════════════════════════════════════════
+# PARAMETERS (values you can change at deploy time)
+# ═══════════════════════════════════════════════
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+
+  AlertEmail:
+    Type: String
+    Default: ojasvimohapatra@gmail.com
+    Description: Email address for SNS low-stock alerts
+
+  CognitoUserPoolId:
+    Type: String
+    Default: ap-south-1_mTqExYvLM
+    Description: Cognito User Pool ID
+
+  CognitoClientId:
+    Type: String
+    Default: 1qkunuh73c70f9g13mekonhhgr
+    Description: Cognito App Client ID
+
+# ═══════════════════════════════════════════════
+# RESOURCES
+# ═══════════════════════════════════════════════
+Resources:
+
+  # ─── DYNAMODB TABLES ───────────────────────
+
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Products
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: productId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: productId
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: InvenTrack
+        - Key: Environment
+          Value: !Ref Environment
+
+  TransactionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: TransactionsTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: productId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: productId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: InvenTrack
+        - Key: Environment
+          Value: !Ref Environment
+
+  AnalyticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: AnalyticsTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: snapshotId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: snapshotId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: InvenTrack
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ─── SNS TOPIC ─────────────────────────────
+
+  LowStockAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: low-stock-alert
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # ─── LAMBDA LAYER (shared utilities) ───────
+
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: inventrack-common
+      Description: Shared utilities for InvenTrack Lambda functions
+      ContentUri: layers/common/
+      CompatibleRuntimes:
+        - nodejs18.x
+
+  # ─── LAMBDA FUNCTIONS ──────────────────────
+
+  AddProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: addProduct
+      Handler: addProduct.handler
+      CodeUri: lambdas/addProduct/
+      Description: Adds a new product to inventory with SNS alert and transaction logging
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt LowStockAlertTopic.TopicName
+      Events:
+        AddProduct:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /product
+            Method: POST
+
+  GetProductsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: getProducts
+      Handler: getProducts.handler
+      CodeUri: lambdas/getProducts/
+      Description: Retrieves all products from DynamoDB with structured logging
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ProductsTable
+      Events:
+        GetProducts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /product/products
+            Method: GET
+
+  UpdateProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: updateProduct
+      Handler: updateProduct.handler
+      CodeUri: lambdas/updateProduct/
+      Description: Updates stock level with transaction history logging
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+      Events:
+        UpdateProduct:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /product
+            Method: PUT
+
+  DeleteProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: deleteProduct
+      Handler: deleteProduct.handler
+      CodeUri: lambdas/deleteProduct/
+      Description: Deletes a product and logs delete transaction
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+      Events:
+        DeleteProduct:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /product
+            Method: DELETE
+
+  GetLowStockFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: getLowStockProducts
+      Handler: getLowStockProducts.handler
+      CodeUri: lambdas/getLowStockProducts/
+      Description: Returns all products below threshold with critical warnings
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ProductsTable
+      Events:
+        GetLowStock:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /product/low-stock
+            Method: GET
+
+  AnalyticsAggregatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: analyticsAggregator
+      Handler: analyticsAggregator.handler
+      CodeUri: lambdas/analyticsAggregator/
+      Description: Hourly analytics aggregation triggered by EventBridge scheduler
+      Timeout: 60
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AnalyticsTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt LowStockAlertTopic.TopicName
+      Events:
+        HourlySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 hour)
+            Description: Triggers analytics aggregation every hour
+            State: ENABLED
+
+  # ─── API GATEWAY ───────────────────────────
+
+  InventoryApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: InvenTrackAPI
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin:  "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !Sub arn:aws:cognito-idp:ap-south-1:971476709086:userpool/${CognitoUserPoolId}
+      Tags:
+        Project: InvenTrack
+
+  # ─── CLOUDWATCH ALARMS ─────────────────────
+
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: LambdaErrorAlarm
+      AlarmDescription: Triggers when Lambda errors exceed 3 in 5 minutes
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref LowStockAlertTopic
+      TreatMissingData: notBreaching
+
+  APILatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: APILatencyAlarm
+      AlarmDescription: Triggers when API Gateway latency exceeds 3000ms
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: InvenTrackAPI
+      AlarmActions:
+        - !Ref LowStockAlertTopic
+      TreatMissingData: notBreaching
+
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: LambdaDurationAlarm
+      AlarmDescription: Triggers when Lambda duration exceeds 5000ms
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5000
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref LowStockAlertTopic
+      TreatMissingData: notBreaching
+
+  # ─── S3 BUCKET (frontend hosting) ──────────
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: inventrack-frontend-ojasvi
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls:       false
+        BlockPublicPolicy:     false
+        IgnorePublicAcls:      false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: Project
+          Value: InvenTrack
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${FrontendBucket.Arn}/*
+
+# ═══════════════════════════════════════════════
+# OUTPUTS (shown after deployment)
+# ═══════════════════════════════════════════════
+Outputs:
+
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${InventoryApi}.execute-api.ap-south-1.amazonaws.com/prod
+
+  FrontendURL:
+    Description: S3 static website URL
+    Value: !GetAtt FrontendBucket.WebsiteURL
+
+  ProductsTableName:
+    Description: DynamoDB Products table name
+    Value: !Ref ProductsTable
+
+  TransactionsTableName:
+    Description: DynamoDB Transactions table name
+    Value: !Ref TransactionsTable
+
+  AnalyticsTableName:
+    Description: DynamoDB Analytics table name
+    Value: !Ref AnalyticsTable
+
+  SNSTopicArn:
+    Description: SNS topic ARN for alerts
+    Value: !Ref LowStockAlertTopic
+
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPoolId
