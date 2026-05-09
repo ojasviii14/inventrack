@@ -68,7 +68,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 /* APP SHELL */
 #appShell{display:none;min-height:100vh}
-.sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow:hidden}
 .logo{padding:24px 24px 20px;border-bottom:1px solid var(--border)}
 .logo-text{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.5px}
 .logo-text span{color:var(--accent)}
@@ -394,6 +394,7 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
       <div class="user-role" id="sideRole">—</div>
     </div>
   </div>
+  <div style="flex:1;overflow-y:auto;overflow-x:hidden">
   <span class="nav-section">Main</span>
   <div class="nav-item active" onclick="navigate('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard</div>
   <div class="nav-item" onclick="navigate('products',this)"><span class="nav-icon">📦</span>Products<span class="nav-badge" id="navLowBadge" style="display:none">0</span></div>
@@ -407,6 +408,7 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
   <div class="nav-item" onclick="navigate('monitoring',this)"><span class="nav-icon">🛰️</span>Monitoring</div>
   <div class="nav-item admin-only" onclick="navigate('iam',this)"><span class="nav-icon">🔑</span>IAM & Security</div>
   <div class="nav-item admin-only" onclick="navigate('cost',this)"><span class="nav-icon">💰</span>Cost Tracker</div>
+  </div><!-- end scrollable nav -->
   <div class="sidebar-footer">
     <div style="font-size:11px;color:var(--text2);display:flex;align-items:center;"><span class="status-dot"></span>AWS Connected</div>
     <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace">ap-south-1 · Free Tier</div>
@@ -1474,43 +1476,79 @@ function renderInventoryKPIs(){
 function renderDashKPIStrip(){
   const el = document.getElementById('dashKpiStrip');
   if(!el) return;
-  const { itr, fillRate, daysToSellout, stockValue } = computeDashKPIs();
+  const { itr, fillRate, daysToSellout, stockValue, totalSold, totalRestocked } = computeDashKPIs();
+
+  // Color code based on values
+  const itrColor = itr>=3?'#ef4444':itr>=1.5?'#f59e0b':'#00d4aa';
+  const fillColor = fillRate>=80?'#00d4aa':fillRate>=60?'#f59e0b':'#ef4444';
+  const daysColor = !daysToSellout?'var(--muted)':daysToSellout<=7?'#ef4444':daysToSellout<=14?'#f59e0b':'#00d4aa';
+
   el.innerHTML = `
-    <div class="stat-card" style="padding:14px;text-align:center">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Turnover Ratio</div>
-      <div style="font-size:24px;font-weight:800;color:var(--purple);font-family:'Syne',sans-serif">${itr}x</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">Units sold / Avg stock</div>
+    <div class="stat-card" style="padding:14px;text-align:center;border-color:rgba(167,139,250,.2)">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📦 Turnover Ratio</div>
+      <div style="font-size:26px;font-weight:800;color:${itrColor};font-family:'Syne',sans-serif">${itr}x</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${totalSold||0} units sold / 30d</div>
     </div>
-    <div class="stat-card" style="padding:14px;text-align:center">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Fill Rate</div>
-      <div style="font-size:24px;font-weight:800;color:var(--accent2);font-family:'Syne',sans-serif">${fillRate}%</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">Products above threshold</div>
+    <div class="stat-card" style="padding:14px;text-align:center;border-color:rgba(0,212,170,.2)">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">✅ Fill Rate</div>
+      <div style="font-size:26px;font-weight:800;color:${fillColor};font-family:'Syne',sans-serif">${fillRate}%</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Stock sustainability</div>
     </div>
-    <div class="stat-card" style="padding:14px;text-align:center">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Days to Sellout</div>
-      <div style="font-size:24px;font-weight:800;color:var(--warn);font-family:'Syne',sans-serif">${daysToSellout||'N/A'}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">At current rate</div>
+    <div class="stat-card" style="padding:14px;text-align:center;border-color:rgba(245,158,11,.2)">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">⏳ Days to Sellout</div>
+      <div style="font-size:26px;font-weight:800;color:${daysColor};font-family:'Syne',sans-serif">${daysToSellout||'N/A'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">At avg daily rate</div>
     </div>
-    <div class="stat-card" style="padding:14px;text-align:center">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Est. Stock Value</div>
-      <div style="font-size:24px;font-weight:800;color:var(--accent);font-family:'Syne',sans-serif">₹${stockValue.toLocaleString()}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">@ avg ₹10/unit</div>
+    <div class="stat-card" style="padding:14px;text-align:center;border-color:rgba(108,99,255,.2)">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">💰 Est. Value</div>
+      <div style="font-size:26px;font-weight:800;color:var(--accent);font-family:'Syne',sans-serif">₹${stockValue.toLocaleString()}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${totalRestocked||0} restocked / 30d</div>
     </div>`;
 }
 
+// Active demo scenario (0 = no demo data)
+let activeDemoScenario = 0;
+
+// Fixed scenario KPI values — always show clear contrast
+const SCENARIO_KPIS = {
+  0: { itr:null, fillRate:null, daysToSellout:null },   // no demo
+  1: { itr:'4.8', fillRate:52,  daysToSellout:6  },     // High Demand
+  2: { itr:'2.3', fillRate:74,  daysToSellout:13 },     // Balanced
+  3: { itr:'0.7', fillRate:91,  daysToSellout:43 },     // Slow Moving
+};
+
 function computeDashKPIs(){
   const stockOutTxns = transactionLog.filter(t=>t.action==='STOCK_OUT');
-  const totalSold    = stockOutTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
-  const avgStock     = allProducts.length
-    ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length)
-    : 0;
-  const itr          = avgStock>0?(totalSold/avgStock).toFixed(2):'0.00';
-  const low          = allProducts.filter(p=>p.currentStock<p.thresholdLevel).length;
-  const fillRate     = allProducts.length?Math.round(((allProducts.length-low)/allProducts.length)*100):100;
-  const daysToSellout= totalSold>0&&avgStock>0?Math.round(avgStock/(totalSold/30)):null;
-  const totalUnits   = allProducts.reduce((s,p)=>s+p.currentStock,0);
-  const stockValue   = totalUnits*10;
-  return {itr, fillRate, daysToSellout, stockValue};
+  const stockInTxns  = transactionLog.filter(t=>t.action==='STOCK_IN');
+  const totalSold      = stockOutTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
+  const totalRestocked = stockInTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
+  const totalUnits     = allProducts.reduce((s,p)=>s+p.currentStock,0);
+  const stockValue     = totalUnits * 10;
+
+  // If demo scenario is active — use fixed values for clear contrast
+  if(activeDemoScenario > 0){
+    const kpi = SCENARIO_KPIS[activeDemoScenario];
+    return {
+      itr:           kpi.itr,
+      fillRate:      kpi.fillRate,
+      daysToSellout: kpi.daysToSellout,
+      stockValue,
+      totalSold,
+      totalRestocked
+    };
+  }
+
+  // No demo data — compute from real data
+  const n        = Math.max(allProducts.length,1);
+  const avgStock = totalUnits/n;
+  const avgSold  = totalSold/n;
+  const itr      = avgStock>0 ? Math.min(9.99,avgSold/Math.max(avgStock,1)).toFixed(2) : '0.00';
+  const low      = allProducts.filter(p=>p.currentStock<p.thresholdLevel).length;
+  const fillRate = Math.round(((n-low)/n)*100);
+  const dailySold= avgSold/30;
+  const daysToSellout = dailySold>0 ? Math.round(avgStock/dailySold) : null;
+
+  return { itr, fillRate, daysToSellout, stockValue, totalSold, totalRestocked };
 }
 
 // ═══════════════════════════════════════
@@ -3063,14 +3101,23 @@ function downloadAuditCSV(){
 // FEATURE 12: INVENTORY TURNOVER RATIO
 // ═══════════════════════════════════════
 function computeTurnoverRatio(){
-  // ITR = Total Units Sold (STOCK_OUT) / Average Stock
-  const stockOutTxns  = transactionLog.filter(t=>t.action==='STOCK_OUT');
-  const totalSold     = stockOutTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
-  const avgStock      = allProducts.length
-    ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length)
-    : 0;
-  const itr           = avgStock>0 ? (totalSold/avgStock).toFixed(2) : '0.00';
-  const daysToSellout = totalSold>0 && avgStock>0 ? Math.round(avgStock/(totalSold/30)) : null;
+  // Use scenario fixed values if demo is active
+  if(activeDemoScenario > 0){
+    const kpi = SCENARIO_KPIS[activeDemoScenario];
+    const stockOutTxns = transactionLog.filter(t=>t.action==='STOCK_OUT');
+    const totalSold    = stockOutTxns.reduce((s,t)=>s+(t.qty||0),0);
+    const avgStock     = allProducts.length
+      ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length) : 0;
+    return { totalSold, avgStock, itr:kpi.itr, daysToSellout:kpi.daysToSellout };
+  }
+  const stockOutTxns = transactionLog.filter(t=>t.action==='STOCK_OUT');
+  const n = Math.max(allProducts.length,1);
+  const totalSold = stockOutTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
+  const avgSold   = totalSold/n;
+  const avgStock  = allProducts.length ? allProducts.reduce((s,p)=>s+p.currentStock,0)/n : 1;
+  const itr       = avgStock>0 ? Math.min(9.99,(avgSold/Math.max(avgStock,1))).toFixed(2) : '0.00';
+  const dailySold = avgSold/30;
+  const daysToSellout = dailySold>0 ? Math.round(avgStock/dailySold) : null;
   return { totalSold, avgStock, itr, daysToSellout };
 }
 
@@ -3293,21 +3340,19 @@ function seedDemoTransactions(scenario=1){
   // Sort newest first
   transactionLog.sort((a,b)=>b.ts-a.ts);
 
+  // Set active scenario for fixed KPI display
+  activeDemoScenario = scenario;
+  const kpi = SCENARIO_KPIS[scenario];
+
   // Update all KPIs
   renderDashKPIStrip();
   renderInventoryKPIs();
   renderKPIChips(allProducts);
 
-  // Compute ITR to show in toast
-  const stockOut = transactionLog.filter(t=>t.action==='STOCK_OUT'&&t.isDemo);
-  const totalSold = stockOut.reduce((sum,t)=>sum+(t.qty||0),0);
-  const avgStk = allProducts.length ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length) : 1;
-  const itr = (totalSold/avgStk).toFixed(2);
-
-  addLog('info',`Demo Scenario ${scenario} (${s.name}) seeded: ${count} txns · ITR:${itr}x · requestId:${genId()}`);
-  addAudit('ADD',`Demo Scenario ${scenario} — ${s.name}: ${count} transactions loaded`,'📊');
-  showToast(`${s.emoji} Scenario ${scenario}: ${s.name} loaded · ITR: ${itr}x · ${count} transactions`,'success');
-  addNotification('info',`Demo Scenario ${scenario} (${s.name}) — ITR: ${itr}x · ${count} transactions generated`,'📊');
+  addLog('info',`Demo Scenario ${scenario} (${s.name}) seeded: ${count} txns · ITR:${kpi.itr}x · Fill:${kpi.fillRate}% · Days:${kpi.daysToSellout} · requestId:${genId()}`);
+  addAudit('ADD',`Demo Scenario ${scenario} — ${s.name}: ITR ${kpi.itr}x, Fill Rate ${kpi.fillRate}%, Days to Sellout ${kpi.daysToSellout}`,'📊');
+  showToast(`${s.emoji} ${s.name} — ITR: ${kpi.itr}x · Fill Rate: ${kpi.fillRate}% · Days to Sellout: ${kpi.daysToSellout}`,'success');
+  addNotification('info',`Scenario ${scenario} (${s.name}) — ITR: ${kpi.itr}x · Fill Rate: ${kpi.fillRate}% · Days to Sellout: ${kpi.daysToSellout} days`,'📊');
 }
 
 // ═══════════════════════════════════════
