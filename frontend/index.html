@@ -4,7 +4,7 @@
 <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.6/dist/amazon-cognito-identity.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InvenTrack — AWS Inventory Suite v2.0</title>
+<title>InvenTrack — AWS Inventory Suite</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -302,6 +302,46 @@ mark{background:rgba(108,99,255,.25);color:var(--accent);border-radius:2px;paddi
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
+/* LIVE indicator pulse */
+@keyframes livePulse{
+  0%{box-shadow:0 0 0 0 rgba(0,212,170,0.6)}
+  70%{box-shadow:0 0 0 8px rgba(0,212,170,0)}
+  100%{box-shadow:0 0 0 0 rgba(0,212,170,0)}
+}
+@keyframes liveRing{
+  0%{transform:scale(1);opacity:1}
+  100%{transform:scale(2.5);opacity:0}
+}
+.live-dot{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(0,212,170,0.1);
+  border:1px solid rgba(0,212,170,0.3);
+  border-radius:20px;padding:4px 10px;
+  font-size:11px;font-weight:600;color:var(--accent2);
+  font-family:'DM Mono',monospace;
+}
+.live-dot-circle{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent2);
+  animation:livePulse 2s infinite;
+  position:relative;flex-shrink:0;
+}
+.live-dot.stale{
+  border-color:rgba(245,158,11,0.3);
+  background:rgba(245,158,11,0.08);
+  color:var(--warn);
+}
+.live-dot.stale .live-dot-circle{
+  background:var(--warn);
+  animation:none;
+}
+/* Analytics auto-refresh flash */
+@keyframes dataFlash{
+  0%{background:rgba(0,212,170,0.08)}
+  100%{background:transparent}
+}
+.data-updated{animation:dataFlash 1s ease-out}
+
 /* ROLE-BASED ACCESS CONTROL via body class */
 body.staff-mode .admin-only{display:none!important}
 body.staff-mode #addProductCard{display:none!important}
@@ -357,7 +397,7 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
   <span class="nav-section">Main</span>
   <div class="nav-item active" onclick="navigate('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard</div>
   <div class="nav-item" onclick="navigate('products',this)"><span class="nav-icon">📦</span>Products<span class="nav-badge" id="navLowBadge" style="display:none">0</span></div>
-  <div class="nav-item admin-only" onclick="navigate('variants',this)"><span class="nav-icon">🔀</span>Variants</div>
+  <div class="nav-item admin-only" onclick="navigate('variants',this)"><span class="nav-icon">🔀</span>Variants<span class="nav-badge" id="variantNavBadge" style="display:none;background:var(--purple)">0</span></div>
   <span class="nav-section">Intelligence</span>
   <div class="nav-item" onclick="navigate('analytics',this)"><span class="nav-icon">📊</span>Analytics</div>
   <div class="nav-item" onclick="navigate('forecast',this)"><span class="nav-icon">🔮</span>AI Forecast</div>
@@ -389,9 +429,17 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
 <!-- DASHBOARD -->
 <div class="page active" id="page-dashboard">
   <div class="topbar">
-    <div>
-      <div class="page-title">Dashboard</div>
-      <div class="page-sub" id="dashGreeting">Real-time inventory overview</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="page-title" style="display:flex;align-items:center;gap:10px">
+          Dashboard
+          <div class="live-dot" id="liveDot">
+            <div class="live-dot-circle"></div>
+            <span id="liveText">LIVE</span>
+          </div>
+        </div>
+        <div class="page-sub" id="dashGreeting">Real-time inventory overview</div>
+      </div>
     </div>
     <div class="topbar-actions">
       <span id="lastRefreshTime" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;align-self:center"></span>
@@ -571,7 +619,19 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
 <!-- ANALYTICS -->
 <div class="page" id="page-analytics">
   <div class="topbar">
-    <div><div class="page-title">Analytics</div><div class="page-sub">Inventory insights and trends</div></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div>
+        <div class="page-title" style="display:flex;align-items:center;gap:10px">
+          📊 Analytics
+          <div class="live-dot" id="analyticsLiveDot">
+            <div class="live-dot-circle"></div>
+            <span>AUTO-SYNC</span>
+          </div>
+        </div>
+        <div class="page-sub">Real-time insights · <span id="analyticsLastSync" style="color:var(--accent2);font-family:'DM Mono',monospace;font-size:11px">Loading...</span></div>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="renderAnalytics()">↺ Refresh</button>
   </div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><span class="card-title">Stock Distribution</span></div><div class="chart-container-sm"><canvas id="analyticsBar"></canvas></div></div>
@@ -927,6 +987,7 @@ function login(){
       startAutoRefresh();
       startWelcomeClock();
       setTimeout(startAlertPolling, 3000); // start polling 3s after login
+      flashLiveIndicator(); // show LIVE dot immediately
     },
     onFailure(err){
       btn.disabled=false;selectRole(selectedRole);
@@ -970,7 +1031,7 @@ function navigate(page,el){
   document.getElementById('page-'+page).classList.add('active');
   if(el)el.classList.add('active');
   addLog('info',`Navigation → ${page} · user:${currentUser}`);
-  if(page==='analytics')renderAnalytics();
+  if(page==='analytics'){renderAnalytics();startAnalyticsAutoRefresh();}else{stopAnalyticsAutoRefresh();}
   if(page==='variants')renderVariantPage();
   if(page==='monitoring')renderMonitoring();
   if(page==='cost')renderCost();
@@ -1253,6 +1314,7 @@ async function loadProducts(silent=false){
     populateCategoryFilter(products);
     renderKPIChips(products);
     if(!silent)addLog('info',`GET /products → ${products.length} items · ${latency}ms · requestId:${genId()}`);
+    flashLiveIndicator(); // update LIVE dot
     // Seed demo transactions if none exist so Transactions page is never blank
     if(transactionLog.length===0 && products.length>0){
       const demoActions=['ADD','STOCK_IN','STOCK_OUT','STOCK_IN','ADD'];
@@ -1391,35 +1453,49 @@ function renderGauge(score){
   const color = pct>=80?'#00d4aa':pct>=50?'#f59e0b':'#ef4444';
   const label = pct>=80?'Excellent':pct>=60?'Good':pct>=40?'Fair':'Critical';
 
-  // Draw arc gauge
+  // Fix canvas size explicitly
+  const size = 130;
+  canvas.width  = size;
+  canvas.height = size;
+  canvas.style.width  = size+'px';
+  canvas.style.height = size+'px';
+
   const ctx   = canvas.getContext('2d');
-  const cx    = canvas.width/2;
-  const cy    = canvas.height/2;
-  const r     = cx - 10;
+  const cx    = size/2;
+  const cy    = size/2;
+  const r     = cx - 12;
   const start = Math.PI * 0.75;
   const end   = Math.PI * 2.25;
   const prog  = start + (end-start) * (pct/100);
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,size,size);
 
-  // Background arc
+  // Background arc - works in both light and dark mode
   ctx.beginPath();
   ctx.arc(cx,cy,r,start,end);
-  ctx.strokeStyle='rgba(255,255,255,0.07)';
+  ctx.strokeStyle = document.body.classList.contains('light-mode')
+    ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
   ctx.lineWidth=14;
   ctx.lineCap='round';
   ctx.stroke();
 
   // Progress arc
-  ctx.beginPath();
-  ctx.arc(cx,cy,r,start,prog);
-  ctx.strokeStyle=color;
-  ctx.lineWidth=14;
-  ctx.lineCap='round';
-  ctx.stroke();
+  if(pct > 0){
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,start,prog);
+    ctx.strokeStyle=color;
+    ctx.lineWidth=14;
+    ctx.lineCap='round';
+    ctx.stroke();
+  }
 
   if(valEl){ valEl.textContent=pct+'%'; valEl.style.color=color; }
-  if(badge){ badge.textContent=label+' · '+pct+'%'; badge.style.color=color; }
+  if(badge){
+    badge.textContent=label+' · '+pct+'%';
+    badge.style.color=color;
+    badge.style.borderColor=color+'40';
+    badge.style.background=color+'10';
+  }
 
   // Breakdown stats
   const allV   = Object.values(variantData).flat();
@@ -1431,10 +1507,22 @@ function renderGauge(score){
   const units  = combined.reduce((s,p)=>s+p.currentStock,0);
 
   if(breakdown) breakdown.innerHTML=`
-    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--accent2)">${healthy}</div><div class="metric-label">Healthy</div></div>
-    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--warn)">${low}</div><div class="metric-label">Low</div></div>
-    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--danger)">${crit}</div><div class="metric-label">Critical</div></div>
-    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--accent)">${units}</div><div class="metric-label">Total Units</div></div>`;
+    <div class="metric-card" style="text-align:center;padding:12px">
+      <div style="font-size:22px;font-weight:800;color:#00d4aa">${healthy}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Healthy</div>
+    </div>
+    <div class="metric-card" style="text-align:center;padding:12px">
+      <div style="font-size:22px;font-weight:800;color:#f59e0b">${low}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Low</div>
+    </div>
+    <div class="metric-card" style="text-align:center;padding:12px">
+      <div style="font-size:22px;font-weight:800;color:#ef4444">${crit}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Critical</div>
+    </div>
+    <div class="metric-card" style="text-align:center;padding:12px">
+      <div style="font-size:22px;font-weight:800;color:#6c63ff">${units}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Total Units</div>
+    </div>`;
 }
 
 function _updateMonMetrics(){
@@ -1643,6 +1731,9 @@ async function renderAnalytics(){
       renderAnalyticsSummaryCards(data.latest);
       if(data.trend&&data.trend.length>1) renderTrendChart(data.trend);
       addLog('info',`Analytics snapshot loaded: ${data.latest.snapshotId} · healthScore:${data.latest.healthScore}% · requestId:${genId()}`);
+    lastAnalyticsSnapshot = JSON.stringify(data.latest.snapshotId + data.latest.totalUnits + data.latest.lowStockCount);
+    const syncEl = document.getElementById('analyticsLastSync');
+    if(syncEl) syncEl.textContent = 'Last sync: ' + new Date(data.latest.timestamp).toLocaleTimeString();
     }
   }catch(err){
     addLog('warn','Analytics API unavailable, using live computed data: '+err.message);
@@ -2142,11 +2233,31 @@ function downloadPDF(){
 // ═══════════════════════════════════════
 // VARIANTS (Feature: Product Variants)
 // ═══════════════════════════════════════
-// Variants stored in localStorage so they persist across refresh
-let variantData = JSON.parse(localStorage.getItem('inventrack_variants')||'{}');
+// Variants stored in localStorage — with backup key for redundancy
+let variantData = (()=>{
+  try{
+    const primary  = localStorage.getItem('inventrack_variants');
+    const backup   = localStorage.getItem('inventrack_variants_backup');
+    const data     = primary || backup || '{}';
+    const parsed   = JSON.parse(data);
+    // Restore backup if primary was missing
+    if(!primary && backup) localStorage.setItem('inventrack_variants', backup);
+    return parsed;
+  }catch(e){ return {}; }
+})();
 
 function saveVariantData(){
-  localStorage.setItem('inventrack_variants', JSON.stringify(variantData));
+  const data = JSON.stringify(variantData);
+  localStorage.setItem('inventrack_variants', data);
+  localStorage.setItem('inventrack_variants_backup', data);
+  localStorage.setItem('inventrack_variants_ts', new Date().toISOString());
+  // Update variant count badge in sidebar
+  const totalVariants = Object.values(variantData).flat().length;
+  const badge = document.getElementById('variantNavBadge');
+  if(badge){
+    if(totalVariants > 0){ badge.style.display=''; badge.textContent=totalVariants; }
+    else badge.style.display='none';
+  }
 }
 
 function openVariantModal(brand=''){
@@ -2923,6 +3034,94 @@ function computeConfidence(product){
 }
 
 // ═══════════════════════════════════════
+// FEATURE 1: LIVE INDICATOR
+// ═══════════════════════════════════════
+let lastDataHash = '';
+let liveStaleTimer = null;
+
+function updateLiveDot(status){
+  const dot  = document.getElementById('liveDot');
+  const text = document.getElementById('liveText');
+  if(!dot) return;
+  if(status === 'live'){
+    dot.className = 'live-dot';
+    if(text) text.textContent = 'LIVE';
+  } else if(status === 'stale'){
+    dot.className = 'live-dot stale';
+    if(text) text.textContent = 'STALE';
+  } else if(status === 'syncing'){
+    dot.className = 'live-dot';
+    if(text) text.textContent = 'SYNCING...';
+  }
+}
+
+function flashLiveIndicator(){
+  updateLiveDot('syncing');
+  setTimeout(()=>updateLiveDot('live'), 800);
+  // Reset stale timer
+  if(liveStaleTimer) clearTimeout(liveStaleTimer);
+  liveStaleTimer = setTimeout(()=>updateLiveDot('stale'), 120000); // stale after 2 min no refresh
+}
+
+// ═══════════════════════════════════════
+// FEATURE 3: ANALYTICS AUTO-REFRESH
+// ═══════════════════════════════════════
+let analyticsAutoRefreshTimer = null;
+let lastAnalyticsSnapshot = null;
+
+function startAnalyticsAutoRefresh(){
+  if(analyticsAutoRefreshTimer) clearInterval(analyticsAutoRefreshTimer);
+  analyticsAutoRefreshTimer = setInterval(async ()=>{
+    // Only refresh if user is on analytics page
+    const analyticsPage = document.getElementById('page-analytics');
+    if(!analyticsPage || !analyticsPage.classList.contains('active')) return;
+
+    try{
+      const data = await apiGet(API_ANALYTICS);
+      if(!data || !data.latest) return;
+
+      // Check if data has changed
+      const newHash = JSON.stringify(data.latest.snapshotId + data.latest.totalUnits + data.latest.lowStockCount);
+      if(newHash === lastAnalyticsSnapshot) return; // no change
+
+      lastAnalyticsSnapshot = newHash;
+
+      // Flash the analytics live dot
+      const dot = document.getElementById('analyticsLiveDot');
+      if(dot){
+        dot.style.opacity = '0.4';
+        setTimeout(()=>dot.style.opacity = '1', 300);
+      }
+
+      // Update sync time
+      const syncEl = document.getElementById('analyticsLastSync');
+      if(syncEl) syncEl.textContent = 'Synced: ' + new Date().toLocaleTimeString();
+
+      // Re-render analytics summary cards
+      renderAnalyticsSummaryCards(data.latest);
+      if(data.trend && data.trend.length > 1) renderTrendChart(data.trend);
+      renderInventoryKPIs();
+
+      // Flash the card to show data updated
+      const summaryEl = document.getElementById('analyticsSummary');
+      if(summaryEl){
+        summaryEl.classList.add('data-updated');
+        setTimeout(()=>summaryEl.classList.remove('data-updated'), 1000);
+      }
+
+      addLog('info', 'Analytics auto-synced from DynamoDB · requestId:' + genId());
+    }catch(e){
+      // silent fail
+    }
+  }, 15000); // check every 15 seconds
+}
+
+function stopAnalyticsAutoRefresh(){
+  if(analyticsAutoRefreshTimer) clearInterval(analyticsAutoRefreshTimer);
+  analyticsAutoRefreshTimer = null;
+}
+
+// ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
 document.getElementById('updateModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
@@ -2934,6 +3133,12 @@ window.onload=function(){
   loadSavedTheme();
   updateNotifBadge();
   renderNotifList();
+  // Update variant badge on load
+  const totalVariants = Object.values(variantData).flat().length;
+  const badge = document.getElementById('variantNavBadge');
+  if(badge && totalVariants>0){ badge.style.display=''; badge.textContent=totalVariants; }
+  // Show variant count in console for debugging
+  console.log('Variants loaded from localStorage:', totalVariants, 'variants in', Object.keys(variantData).length, 'brands');
 };
 </script>
 </body>
