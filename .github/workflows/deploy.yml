@@ -1,0 +1,52 @@
+name: InvenTrack — Deploy to AWS
+
+# ── Trigger: runs on every push to main branch ──
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    name: Deploy Frontend to S3 + CloudFront
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ── Step 1: Checkout the repository ──
+      - name: ✅ Checkout Repository
+        uses: actions/checkout@v3
+
+      # ── Step 2: Configure AWS credentials ──
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ap-south-1
+
+      # ── Step 3: Upload index.html to S3 ──
+      - name: 📦 Upload Frontend to S3
+        run: |
+          aws s3 cp frontend/index.html s3://${{ secrets.S3_BUCKET_NAME }}/index.html \
+            --content-type "text/html" \
+            --cache-control "no-cache, no-store, must-revalidate"
+          echo "✅ index.html uploaded to S3 successfully"
+
+      # ── Step 4: Invalidate CloudFront cache ──
+      - name: ⚡ Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+          echo "✅ CloudFront cache invalidated successfully"
+
+      # ── Step 5: Verify deployment ──
+      - name: 🌐 Deployment Complete
+        run: |
+          echo "🚀 InvenTrack deployed successfully!"
+          echo "🌐 Live URL: https://d105iz30cenct6.cloudfront.net"
+          echo "📅 Deployed at: $(date)"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Deployed by: ${{ github.actor }}"
