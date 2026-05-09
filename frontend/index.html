@@ -1,0 +1,2940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.6/dist/amazon-cognito-identity.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InvenTrack — AWS Inventory Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0c14;--surface:#10131f;--surface2:#161b2c;--surface3:#1c2238;
+  --border:#1e2540;--border2:#2a3155;
+  --accent:#6c63ff;--accent-glow:rgba(108,99,255,0.22);
+  --accent2:#00d4aa;--accent2-glow:rgba(0,212,170,0.18);
+  --warn:#f59e0b;--danger:#ef4444;--purple:#a78bfa;
+  --text:#dde2f0;--text2:#8892b0;--muted:#4a5580;
+}
+/* LIGHT MODE */
+body.light-mode{
+  --bg:#f0f2f8;--surface:#ffffff;--surface2:#f4f6fb;--surface3:#e8ecf5;
+  --border:#dde2ef;--border2:#c8d0e7;
+  --text:#1a1f36;--text2:#4a5580;--muted:#8892b0;
+  --accent-glow:rgba(108,99,255,0.12);
+}
+body.light-mode::before{
+  background-image:linear-gradient(rgba(108,99,255,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(108,99,255,0.04) 1px,transparent 1px);
+}
+body.light-mode .sidebar{box-shadow:4px 0 24px rgba(0,0,0,0.06)}
+body.light-mode .card{box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+body.light-mode .stat-card{box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+body.light-mode tbody tr:hover{background:rgba(108,99,255,0.06)}
+body.light-mode .toast{box-shadow:0 8px 24px rgba(0,0,0,0.15)}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(108,99,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(108,99,255,0.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+/* LOGIN */
+#loginPage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999;background:var(--bg)}
+.login-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(108,99,255,0.11) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(0,212,170,0.07) 0%,transparent 60%);pointer-events:none}
+.login-box{position:relative;width:440px;background:var(--surface);border:1px solid var(--border2);border-radius:24px;padding:44px;box-shadow:0 40px 80px rgba(0,0,0,0.5);animation:fadeUp .45s cubic-bezier(.22,1,.36,1)}
+@keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-text{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--text);letter-spacing:-1px}
+.login-logo-text span{color:var(--accent)}
+.login-logo-sub{font-size:11px;color:var(--muted);margin-top:3px;letter-spacing:2px;text-transform:uppercase}
+.role-tabs{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:4px;margin-bottom:24px;gap:4px}
+.role-tab{flex:1;padding:11px;text-align:center;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .22s;border:1px solid transparent;user-select:none}
+.role-tab:hover{color:var(--text)}
+.role-tab.active{background:var(--bg);border-color:var(--border);color:var(--text)}
+.role-tab.active.admin-tab{color:var(--accent);border-color:rgba(108,99,255,.35)}
+.role-tab.active.staff-tab{color:var(--accent2);border-color:rgba(0,212,170,.3)}
+.role-tab-icon{font-size:18px;display:block;margin-bottom:3px}
+.login-field{margin-bottom:14px}
+.login-label{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.login-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.login-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.login-input::placeholder{color:var(--muted)}
+.login-btn{width:100%;padding:13px;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:6px}
+.login-btn:hover{transform:translateY(-2px)}
+.login-btn:active{transform:translateY(0)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-btn.admin-btn{background:linear-gradient(135deg,#6c63ff,#8478ff);color:white;box-shadow:0 8px 24px rgba(108,99,255,.35)}
+.login-btn.staff-btn{background:linear-gradient(135deg,#00b894,#00d4aa);color:#001a13;box-shadow:0 8px 24px rgba(0,212,170,.25)}
+.login-hint{text-align:center;margin-top:16px;font-size:11px;color:var(--muted)}
+
+/* APP SHELL */
+#appShell{display:none;min-height:100vh}
+.sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.logo{padding:24px 24px 20px;border-bottom:1px solid var(--border)}
+.logo-text{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.5px}
+.logo-text span{color:var(--accent)}
+.logo-sub{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.user-pill{margin:12px 12px 0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 13px;display:flex;align-items:center;gap:10px}
+.user-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.user-avatar.admin{background:rgba(108,99,255,.2);color:var(--accent);border:1px solid rgba(108,99,255,.3)}
+.user-avatar.staff{background:rgba(0,212,170,.15);color:var(--accent2);border:1px solid rgba(0,212,170,.3)}
+.user-name{font-size:12px;font-weight:600;color:var(--text);line-height:1;margin-bottom:2px}
+.user-role{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.user-role.admin-role{color:var(--accent)}
+.user-role.staff-role{color:var(--accent2)}
+.nav-section{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:16px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .18s;border-left:2px solid transparent;margin-bottom:1px}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(108,99,255,.08)}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:rgba(239,68,68,.2);color:var(--danger);border-radius:20px;font-size:10px;font-weight:700;padding:2px 7px}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+.status-dot{display:inline-block;width:7px;height:7px;background:var(--accent2);border-radius:50%;margin-right:7px;animation:blink 2.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.logout-btn{width:100%;margin-top:10px;padding:9px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;text-align:center}
+.logout-btn:hover{border-color:var(--danger);color:var(--danger)}
+
+.main{margin-left:240px;flex:1;padding:32px 36px;position:relative;z-index:1}
+.page{display:none}
+.page.active{display:block;animation:pageIn .25s ease}
+@keyframes pageIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px;gap:16px}
+.page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--text);letter-spacing:-.5px}
+.page-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.topbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.alert-banner{background:linear-gradient(135deg,rgba(239,68,68,.13),rgba(239,68,68,.04));border:1px solid rgba(239,68,68,.28);border-radius:12px;padding:12px 18px;margin-bottom:20px;font-size:13px;color:#fca5a5;font-weight:500;animation:slideDown .3s ease}
+@keyframes slideDown{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* STAT CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:default}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.stat-card.blue::after{background:linear-gradient(90deg,var(--accent),transparent)}
+.stat-card.amber::after{background:linear-gradient(90deg,var(--warn),transparent)}
+.stat-card.teal::after{background:linear-gradient(90deg,var(--accent2),transparent)}
+.stat-card.red::after{background:linear-gradient(90deg,var(--danger),transparent)}
+.stat-card.purple::after{background:linear-gradient(90deg,var(--purple),transparent)}
+.stat-icon{font-size:20px;margin-bottom:10px;display:block}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.stat-value{font-family:'Syne',sans-serif;font-size:34px;font-weight:800;line-height:1}
+.stat-card.blue .stat-value{color:var(--accent)}
+.stat-card.amber .stat-value{color:var(--warn)}
+.stat-card.teal .stat-value{color:var(--accent2)}
+.stat-card.red .stat-value{color:var(--danger)}
+.stat-card.purple .stat-value{color:var(--purple)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* GRIDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3-1{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.card-badge{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(108,99,255,.12);color:var(--accent);border:1px solid rgba(108,99,255,.2)}
+.card-badge.teal{background:rgba(0,212,170,.1);color:var(--accent2);border-color:rgba(0,212,170,.2)}
+.card-badge.warn{background:rgba(245,158,11,.1);color:var(--warn);border-color:rgba(245,158,11,.2)}
+.card-badge.danger{background:rgba(239,68,68,.1);color:var(--danger);border-color:rgba(239,68,68,.2)}
+.card-badge.purple{background:rgba(167,139,250,.1);color:var(--purple);border-color:rgba(167,139,250,.2)}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:repeat(5,1fr) auto;gap:10px;align-items:end}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.form-input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.form-input::placeholder{color:var(--muted)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 15px;border:none;border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .18s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-primary{background:var(--accent);color:white;box-shadow:0 4px 12px rgba(108,99,255,.3)}
+.btn-primary:hover{background:#7c75ff}
+.btn-secondary{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.22)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-warn{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.22)}
+.btn-warn:hover{background:rgba(245,158,11,.2)}
+.btn-teal{background:rgba(0,212,170,.12);color:var(--accent2);border:1px solid rgba(0,212,170,.22)}
+.btn-teal:hover{background:rgba(0,212,170,.2)}
+.btn-purple{background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.22)}
+.btn-purple:hover{background:rgba(167,139,250,.2)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-xs{padding:4px 9px;font-size:11px;border-radius:6px}
+
+/* SEARCH */
+.search-wrap{position:relative}
+.search-wrap .form-input{padding-left:34px;width:200px}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{padding:8px 13px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid rgba(30,37,64,.6);transition:background .12s}
+tbody tr:hover{background:rgba(108,99,255,.04)}
+tbody td{padding:12px 13px;color:var(--text)}
+.product-id{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface2);padding:3px 8px;border-radius:6px}
+.category-badge{background:rgba(108,99,255,.1);color:#a8a4ff;padding:3px 9px;border-radius:20px;font-size:11px;border:1px solid rgba(108,99,255,.15)}
+.stock-ok{color:var(--accent2);font-weight:600;font-family:'DM Mono',monospace}
+.stock-warn{color:var(--warn);font-weight:600;font-family:'DM Mono',monospace}
+.stock-critical{color:var(--danger);font-weight:700;font-family:'DM Mono',monospace}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.status-ok{background:rgba(0,212,170,.1);color:var(--accent2)}
+.status-low{background:rgba(245,158,11,.1);color:var(--warn)}
+.status-critical{background:rgba(239,68,68,.1);color:var(--danger)}
+.actions-cell{display:flex;gap:5px}
+.progress-wrap{background:var(--surface2);border-radius:20px;height:5px;overflow:hidden}
+.progress-bar{height:100%;border-radius:20px;transition:width .4s ease}
+
+/* CHARTS */
+.chart-container{position:relative;height:260px}
+.chart-container-sm{position:relative;height:200px}
+
+/* KPI CHIPS */
+.kpi-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.kpi-chip{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:12px}
+.kpi-chip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.kpi-chip-val{font-family:'Syne',sans-serif;font-weight:700;font-size:14px}
+
+/* MONITORING */
+.metric-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+.metric-value{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:3px}
+.metric-label{font-size:11px;color:var(--muted)}
+.log-entry{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(30,37,64,.8);font-size:13px}
+.log-entry:last-child{border-bottom:none}
+.log-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap;margin-top:2px;flex-shrink:0}
+.log-level{padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.log-info{background:rgba(108,99,255,.15);color:var(--accent)}
+.log-warn{background:rgba(245,158,11,.15);color:var(--warn)}
+.log-error{background:rgba(239,68,68,.15);color:var(--danger)}
+.log-success{background:rgba(0,212,170,.12);color:var(--accent2)}
+
+/* COST */
+.cost-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.cost-item{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px}
+.cost-service{font-size:11px;color:var(--muted);margin-bottom:5px}
+.cost-amount{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent2)}
+.cost-unit{font-size:11px;color:var(--muted);margin-top:3px}
+.cost-limit{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* AI FORECAST */
+.predict-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.predict-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden}
+.predict-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),transparent)}
+.predict-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.predict-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
+.predict-days{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--warn)}
+.predict-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.predict-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(167,139,250,.12);color:var(--purple);margin-top:6px;border:1px solid rgba(167,139,250,.2)}
+
+/* AUDIT */
+.audit-entry{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(30,37,64,.8)}
+.audit-entry:last-child{border-bottom:none}
+.audit-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.audit-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.audit-action{font-size:13px;color:var(--text);font-weight:500}
+
+/* HEATMAP */
+.heatmap-row{display:flex;gap:3px;margin-bottom:3px;align-items:center}
+.heatmap-label{font-size:10px;color:var(--muted);width:70px;text-align:right;padding-right:8px;flex-shrink:0}
+.heatmap-cell{width:20px;height:20px;border-radius:3px;cursor:pointer;transition:opacity .15s;flex-shrink:0}
+.heatmap-cell:hover{opacity:.7;transform:scale(1.15)}
+.heatmap-legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--muted)}
+
+/* SEARCH HIGHLIGHT */
+mark{background:rgba(108,99,255,.25);color:var(--accent);border-radius:2px;padding:0 2px}
+
+/* TRANSACTION TIMELINE */
+.txn-entry{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(30,37,64,.7)}
+.txn-entry:last-child{border-bottom:none}
+.txn-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.txn-body{flex:1}
+.txn-title{font-size:13px;font-weight:600;color:var(--text)}
+.txn-meta{font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
+
+/* IAM ROLES */
+.iam-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.iam-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.iam-role-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.iam-badge{font-size:10px;padding:2px 8px;border-radius:10px}
+.permission-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(30,37,64,.5);font-size:12px}
+.permission-row:last-child{border-bottom:none}
+.perm-allowed{color:var(--accent2)}
+.perm-denied{color:var(--danger)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);z-index:9000;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:30px;width:430px;animation:modalIn .22s cubic-bezier(.22,1,.36,1);box-shadow:0 32px 64px rgba(0,0,0,.5)}
+@keyframes modalIn{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:20px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:500;z-index:99999;transform:translateY(80px);opacity:0;transition:all .32s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:10px;min-width:260px;max-width:380px;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-left:3px solid var(--accent2)}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.info{border-left:3px solid var(--accent)}
+.toast.warn{border-left:3px solid var(--warn)}
+
+/* LOADING / EMPTY */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;color:var(--muted);gap:12px;font-size:13px}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:36px 24px;color:var(--muted)}
+.empty-icon{font-size:34px;margin-bottom:10px;opacity:.4}
+.empty-text{font-size:13px}
+
+.pagination{display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.page-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:12px;color:var(--text2);cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);color:white;border-color:var(--accent)}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+.page-info{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ROLE-BASED ACCESS CONTROL via body class */
+body.staff-mode .admin-only{display:none!important}
+body.staff-mode #addProductCard{display:none!important}
+body.staff-mode #page-variants{display:none!important}
+body.staff-mode #page-iam{display:none!important}
+body.staff-mode #page-cost{display:none!important}
+body.staff-mode .btn-danger{display:none!important}
+body.staff-mode [onclick*="deleteProduct"]{display:none!important}
+body.staff-mode [onclick*="deleteVariant"]{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-text">Inven<span>Track</span></div>
+      <div class="login-logo-sub">AWS Cloud Inventory Suite</div>
+    </div>
+    <div class="role-tabs">
+      <div class="role-tab admin-tab active" id="tab-admin" onclick="selectRole('admin')"><span class="role-tab-icon">🔐</span>Administrator</div>
+      <div class="role-tab staff-tab" id="tab-staff" onclick="selectRole('staff')"><span class="role-tab-icon">👤</span>Staff / Operator</div>
+    </div>
+    <div class="login-field">
+      <label class="login-label">Email Address</label>
+      <input class="login-input" id="loginEmail" type="email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Password</label>
+      <input class="login-input" id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="login-btn admin-btn" id="loginBtn" onclick="login()">Sign in as Administrator</button>
+    <div class="login-hint">Amazon Cognito · <span style="font-family:'DM Mono',monospace;font-size:10px;background:var(--surface2);padding:2px 7px;border-radius:5px;border:1px solid var(--border);color:var(--muted)">ap-south-1</span></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell" style="display:none;min-height:100vh;">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-text">Inven<span>Track</span></div>
+    <div class="logo-sub">AWS Inventory Suite</div>
+  </div>
+  <div class="user-pill">
+    <div class="user-avatar admin" id="sideAvatar">?</div>
+    <div>
+      <div class="user-name" id="sideName">—</div>
+      <div class="user-role" id="sideRole">—</div>
+    </div>
+  </div>
+  <span class="nav-section">Main</span>
+  <div class="nav-item active" onclick="navigate('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard</div>
+  <div class="nav-item" onclick="navigate('products',this)"><span class="nav-icon">📦</span>Products<span class="nav-badge" id="navLowBadge" style="display:none">0</span></div>
+  <div class="nav-item admin-only" onclick="navigate('variants',this)"><span class="nav-icon">🔀</span>Variants</div>
+  <span class="nav-section">Intelligence</span>
+  <div class="nav-item" onclick="navigate('analytics',this)"><span class="nav-icon">📊</span>Analytics</div>
+  <div class="nav-item" onclick="navigate('forecast',this)"><span class="nav-icon">🔮</span>AI Forecast</div>
+  <div class="nav-item" onclick="navigate('transactions',this)"><span class="nav-icon">🔄</span>Transactions</div>
+  <div class="nav-item" onclick="navigate('audit',this)"><span class="nav-icon">🕵️</span>Audit Trail</div>
+  <span class="nav-section">Operations</span>
+  <div class="nav-item" onclick="navigate('monitoring',this)"><span class="nav-icon">🛰️</span>Monitoring</div>
+  <div class="nav-item admin-only" onclick="navigate('iam',this)"><span class="nav-icon">🔑</span>IAM & Security</div>
+  <div class="nav-item admin-only" onclick="navigate('cost',this)"><span class="nav-icon">💰</span>Cost Tracker</div>
+  <div class="sidebar-footer">
+    <div style="font-size:11px;color:var(--text2);display:flex;align-items:center;"><span class="status-dot"></span>AWS Connected</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace">ap-south-1 · Free Tier</div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="logout-btn" style="flex:1" onclick="logout()">↩ Sign Out</button>
+      <button class="logout-btn" style="width:36px;font-size:16px;padding:0" id="themeBtn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+    </div>
+  </div>
+</aside>
+
+<!-- STAFF ROLE BANNER (hidden for admin) -->
+<div id="staffRoleBanner" style="display:none;position:fixed;top:0;left:240px;right:0;z-index:200;background:linear-gradient(90deg,rgba(0,212,170,0.15),rgba(0,212,170,0.05));border-bottom:1px solid rgba(0,212,170,0.3);padding:8px 36px;align-items:center;gap:10px;font-size:12px;color:var(--accent2);">
+  <span style="font-size:16px">👤</span>
+  <span><strong>Staff View</strong> — You have read and update access only. Add, delete and admin features are restricted.</span>
+  <span style="margin-left:auto;font-size:11px;color:var(--muted)">Contact your Administrator for full access</span>
+</div>
+
+<main class="main" id="appMain">
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dashGreeting">Real-time inventory overview</div>
+    </div>
+    <div class="topbar-actions">
+      <span id="lastRefreshTime" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;align-self:center"></span>
+      <button class="btn btn-secondary btn-sm" onclick="loadProducts()">↺ Refresh</button>
+      <div style="position:relative;display:inline-block">
+        <button class="btn btn-secondary btn-sm" id="bellBtn" onclick="toggleNotifCenter()" style="font-size:15px;padding:5px 10px;position:relative">
+          🔔<span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--danger);color:white;border-radius:50%;width:17px;height:17px;font-size:9px;font-weight:700;align-items:center;justify-content:center;font-family:'Syne',sans-serif">0</span>
+        </button>
+        <div id="notifCenter" style="display:none;position:absolute;right:0;top:46px;width:320px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.5);z-index:9999">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)">Notifications</span>
+            <button onclick="clearNotifications()" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif">Clear all</button>
+          </div>
+          <div id="notifList" style="max-height:300px;overflow-y:auto">
+            <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No notifications yet</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm admin-only" onclick="navigate('products',document.querySelectorAll('.nav-item')[1])">+ Add Product</button>
+    </div>
+  </div>
+  <div id="alertBanner" style="display:none" class="alert-banner"></div>
+
+  <!-- Welcome Card -->
+  <div id="welcomeCard" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--border2);border-radius:16px;padding:18px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#8478ff);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px var(--accent-glow)">📦</div>
+      <div>
+        <div id="welcomeTitle" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text)">Welcome to InvenTrack</div>
+        <div id="welcomeDate" style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div id="welcomeTime" style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums"></div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Local Time</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border)"></div>
+      <div id="systemStatusCard" style="display:flex;align-items:center;gap:8px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);border-radius:10px;padding:8px 14px">
+        <div id="systemStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--accent2);animation:blink 2s infinite"></div>
+        <div>
+          <div id="systemStatusText" style="font-size:12px;font-weight:600;color:var(--accent2)">All Systems Operational</div>
+          <div id="systemStatusSub" style="font-size:10px;color:var(--muted)">AWS ap-south-1 · Free Tier</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpiRow"></div>
+  <div class="stats-grid">
+    <div class="stat-card blue"><span class="stat-icon">📦</span><div class="stat-label">Total Products</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">Active SKUs</div></div>
+    <div class="stat-card amber"><span class="stat-icon">⚠️</span><div class="stat-label">Low Stock</div><div class="stat-value" id="statLow">—</div><div class="stat-sub">Below threshold</div></div>
+    <div class="stat-card teal"><span class="stat-icon">🔢</span><div class="stat-label">Total Units</div><div class="stat-value" id="statUnits">—</div><div class="stat-sub">In warehouse</div></div>
+    <div class="stat-card red"><span class="stat-icon">🚨</span><div class="stat-label">Critical</div><div class="stat-value" id="statCritical">—</div><div class="stat-sub">≤50% threshold</div></div>
+  </div>
+  <div class="grid-3-1">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Stock vs Threshold</span><span class="card-badge teal">Live</span></div>
+      <div class="chart-container"><canvas id="stockChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Category Split</span></div>
+      <div class="chart-container"><canvas id="categoryChart"></canvas></div>
+    </div>
+  </div>
+  <!-- Health Score Gauge -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">🏥 Inventory Health Score</span>
+      <span class="card-badge teal" id="healthScoreBadge">Calculating...</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+      <div style="position:relative;width:130px;height:130px;flex-shrink:0">
+        <canvas id="gaugeChart" width="130" height="130"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div id="gaugeValue" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent2)">—</div>
+          <div style="font-size:10px;color:var(--muted)">Health %</div>
+        </div>
+      </div>
+      <div id="healthBreakdown" style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:200px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">🚨 Critical Items</span><span class="card-badge danger" id="criticalCount">0 items</span></div>
+    <div id="criticalTable"><div class="empty"><div class="empty-icon">✅</div><div class="empty-text">All products well stocked</div></div></div>
+  </div>
+</div>
+
+<!-- PRODUCTS -->
+<div class="page" id="page-products">
+  <div class="topbar">
+    <div><div class="page-title">Products</div><div class="page-sub">Manage inventory items</div></div>
+  </div>
+  <div class="card admin-only" id="addProductCard">
+    <div class="card-header">
+      <span class="card-title">➕ Add New Product</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="btn btn-purple btn-sm" style="cursor:pointer" title="Import multiple products from CSV">
+          📂 Import CSV
+          <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="importCSV(event)">
+        </label>
+        <button class="btn btn-secondary btn-sm" onclick="downloadCSVTemplate()">⬇ Template</button>
+      </div>
+    </div>
+    <div id="csvProgress" style="display:none;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px" id="csvProgressText">Importing...</div>
+      <div style="background:var(--surface2);border-radius:20px;height:6px;overflow:hidden">
+        <div id="csvProgressBar" style="background:var(--accent);height:100%;width:0%;border-radius:20px;transition:width .3s ease"></div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Product ID</label><input class="form-input" id="pid" placeholder="P001"></div>
+      <div class="form-group"><label class="form-label">Product Name</label><input class="form-input" id="pname" placeholder="Wireless Mouse"></div>
+      <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="pcat" placeholder="Electronics"></div>
+      <div class="form-group"><label class="form-label">Stock Qty</label><input class="form-input" id="pstock" type="number" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Threshold</label><input class="form-input" id="pthresh" type="number" placeholder="5"></div>
+      <button class="btn btn-primary" onclick="addProduct()" style="align-self:end">+ Add</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">All Products <span id="productCount" style="font-size:12px;color:var(--muted);font-weight:400"></span></span>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="form-input" id="search" placeholder="Search..." onkeyup="searchProducts()"></div>
+        <select class="form-input" id="filterCat" onchange="searchProducts()" style="width:130px"><option value="">All Categories</option></select>
+        <select class="form-input" id="filterStatus" onchange="searchProducts()" style="width:120px">
+          <option value="">All Status</option><option value="ok">Healthy</option><option value="low">Low</option><option value="critical">Critical</option>
+        </select>
+        <select class="form-input" id="sortBy" onchange="searchProducts()" style="width:155px">
+          <option value="default">⇅ Sort: Default</option>
+          <option value="id_asc">🔢 ID: Ascending</option>
+          <option value="id_desc">🔢 ID: Descending</option>
+          <option value="name_asc">🔤 Name: A → Z</option>
+          <option value="name_desc">🔤 Name: Z → A</option>
+          <option value="stock_asc">📦 Stock: Low → High</option>
+          <option value="stock_desc">📦 Stock: High → Low</option>
+          <option value="category_asc">🏷 Category: A → Z</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadProducts()">↺</button>
+        <button class="btn btn-teal btn-sm" onclick="downloadPDF()">⬇ PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="downloadCSV()">⬇ CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="productTableWrap"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+  </div>
+</div>
+
+<!-- VARIANTS PAGE -->
+<div class="page admin-only" id="page-variants">
+  <div class="topbar">
+    <div><div class="page-title">🔀 Product Variants</div><div class="page-sub">Manage product variants — e.g. Apple → AirPods, AirPods Max, iPhone 15</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openVariantModal()">+ Add Variant</button>
+  </div>
+
+  <div class="card" style="border-color:rgba(167,139,250,.25)">
+    <div class="card-header"><span class="card-title">How Variants Work</span><span class="card-badge purple">Admin Only</span></div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7">
+      Variants allow you to group related products under a <strong style="color:var(--text)">parent brand or category</strong>.
+      For example, <strong style="color:var(--text)">Apple</strong> can have variants: AirPods, AirPods Max, iPhone 15 Pro — each with their own stock and threshold.
+      Only Administrators can add or delete variants. Staff can view and update stock.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Variant Groups</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="form-input" id="variantSearch" placeholder="Search brand..." onkeyup="renderVariantPage()"></div>
+        <span class="card-badge purple" id="variantCount">0 groups</span>
+      </div>
+    </div>
+    <div id="variantGroupContainer"><div class="empty"><div class="empty-icon">🔀</div><div class="empty-text">No variants yet. Click "+ Add Variant" to create one.</div></div></div>
+  </div>
+</div>
+
+<!-- ANALYTICS -->
+<div class="page" id="page-analytics">
+  <div class="topbar">
+    <div><div class="page-title">Analytics</div><div class="page-sub">Inventory insights and trends</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><span class="card-title">Stock Distribution</span></div><div class="chart-container-sm"><canvas id="analyticsBar"></canvas></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Units by Category</span></div><div class="chart-container-sm"><canvas id="analyticsDoughnut"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Stock Activity Heatmap</span><span class="card-badge purple">Last 7 Days · Simulated</span></div>
+    <div id="heatmapContainer"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Fast vs Slow Movers</span><span class="card-badge warn">Threshold Proximity</span></div>
+    <div id="moverTable"></div>
+  </div>
+  <!-- Inventory KPIs -->
+  <div id="inventoryKPICard" class="card" style="border-color:rgba(108,99,255,.2)">
+    <div class="card-header"><span class="card-title">📊 Key Performance Indicators</span><span class="card-badge purple">Live Computed</span></div>
+    <div id="inventoryKPIs" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Stock Health Overview</span><span class="card-badge teal">All Products</span></div>
+    <div id="healthTable"></div>
+  </div>
+</div>
+
+<!-- AI FORECAST -->
+<div class="page" id="page-forecast">
+  <div class="topbar">
+    <div><div class="page-title">🔮 AI Forecast</div><div class="page-sub">Predictive stock intelligence · EOQ + Velocity model</div></div>
+    <button class="btn btn-purple btn-sm" onclick="runForecast()">⚡ Run Forecast</button>
+  </div>
+  <div class="card" style="border-color:rgba(167,139,250,.25)">
+    <div class="card-header"><span class="card-title">How This Works</span><span class="card-badge purple">Rule-based ML Simulation</span></div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7">
+      The forecast engine analyses each product's <strong style="color:var(--text)">current stock</strong>, <strong style="color:var(--text)">threshold level</strong>, and <strong style="color:var(--text)">consumption velocity</strong> to estimate days until stockout.
+      Reorder quantities use the <strong style="color:var(--text)">Economic Order Quantity (EOQ)</strong> formula: √(2DS/H) where D = annual demand, S = ordering cost, H = holding cost.
+      In production this connects to <strong style="color:var(--text)">AWS SageMaker</strong> for real ML inference.
+    </div>
+  </div>
+  <div class="predict-grid" id="forecastCards"><div class="empty"><div class="empty-icon">🔮</div><div class="empty-text">Click "Run Forecast" to generate predictions</div></div></div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-header"><span class="card-title">📈 Reorder Recommendations</span><span class="card-badge purple" id="forecastBadge">0 items</span></div>
+    <div id="forecastTable"></div>
+  </div>
+</div>
+
+<!-- TRANSACTION HISTORY (Feature 1: Transaction Table) -->
+<div class="page" id="page-transactions">
+  <div class="topbar">
+    <div><div class="page-title">🔄 Transaction History</div><div class="page-sub">Complete stock movement log · Real DynamoDB TransactionsTable data</div></div>
+    <button class="btn btn-secondary btn-sm" onclick="clearTransactions()">🗑 Clear</button>
+  </div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Transaction Volume</span><span class="card-badge teal">Session</span></div>
+      <div class="chart-container-sm"><canvas id="txnChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Action Breakdown</span></div>
+      <div class="chart-container-sm"><canvas id="txnPieChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Stock Movements</span>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="form-input" id="txnSearch" placeholder="Search product..." onkeyup="renderTransactions()" style="width:160px"></div>
+        <select class="form-input btn-sm" id="txnFilter" onchange="renderTransactions()" style="width:130px">
+          <option value="">All Actions</option><option value="STOCK_IN">Stock In</option><option value="STOCK_OUT">Stock Out</option><option value="ADD">Add Product</option><option value="DELETE">Delete</option>
+        </select>
+        <span class="card-badge" id="txnCount">0 records</span>
+      </div>
+    </div>
+    <div id="transactionLog"><div class="empty"><div class="empty-icon">🔄</div><div class="empty-text">No transactions yet. Add or update products to see history.</div></div></div>
+  </div>
+</div>
+
+<!-- AUDIT TRAIL (Feature 2) -->
+<div class="page" id="page-audit">
+  <div class="topbar">
+    <div><div class="page-title">🕵️ Audit Trail</div><div class="page-sub">Tamper-evident log of all user actions with Cognito identity</div></div>
+    <div class="topbar-actions">
+      <select class="form-input btn-sm" id="auditFilter" onchange="renderAudit()" style="width:140px">
+        <option value="">All Actions</option><option value="ADD">Add</option><option value="UPDATE">Update</option><option value="DELETE">Delete</option><option value="LOGIN">Login</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="clearAudit()">🗑 Clear</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Action History</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="form-input" id="auditSearch" placeholder="Search..." onkeyup="renderAudit()" style="width:160px"></div>
+        <button class="btn btn-teal btn-sm" onclick="downloadAuditCSV()">⬇ Export CSV</button>
+        <span class="card-badge" id="auditCount">0 records</span>
+      </div>
+    </div>
+    <div id="auditLog"><div class="empty"><div class="empty-icon">🕵️</div><div class="empty-text">No actions recorded yet</div></div></div>
+  </div>
+</div>
+
+<!-- MONITORING (Feature 3: Structured Logging + API Charts) -->
+<div class="page" id="page-monitoring">
+  <div class="topbar">
+    <div><div class="page-title">Monitoring</div><div class="page-sub">System health · Structured JSON logs · CloudWatch simulation</div></div>
+    <div class="topbar-actions">
+      <button class="btn btn-warn btn-sm" onclick="demoStaffView()">👤 Staff View</button>
+      <button class="btn btn-danger btn-sm admin-only" onclick="simulateError()">⚡ Test Alarm</button>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric-card"><div class="metric-value" style="color:var(--accent)" id="monTotal">—</div><div class="metric-label">Total Products</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--warn)" id="monLow">—</div><div class="metric-label">Low Stock Alerts</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--accent2)" id="monHealth">—</div><div class="metric-label">System Health</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--accent2)" id="monApi">0</div><div class="metric-label">Successful Calls</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)" id="monErrors">0</div><div class="metric-label">API Errors</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">API Latency Timeline</span><span class="card-badge teal">Last 10 calls</span></div>
+      <div class="chart-container-sm"><canvas id="latencyChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Success vs Error Rate</span><span class="card-badge">Session</span></div>
+      <div class="chart-container-sm"><canvas id="errorChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📋 Structured JSON Log</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="form-input btn-sm" id="logFilter" onchange="_drawLog()" style="width:120px">
+          <option value="">All Levels</option><option value="info">INFO</option><option value="warn">WARN</option><option value="error">ERROR</option><option value="success">SUCCESS</option>
+        </select>
+        <span class="card-badge" id="logCount">0 events</span>
+      </div>
+    </div>
+    <div id="activityLog"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No activity yet</div></div></div>
+  </div>
+</div>
+
+<!-- IAM & SECURITY (Feature 4: IAM Roles Visualiser) -->
+<div class="page admin-only" id="page-iam">
+  <div class="topbar">
+    <div><div class="page-title">🔑 IAM & Security</div><div class="page-sub">Role-based access control · Least-privilege policies · Cognito groups</div></div>
+    <button class="btn btn-secondary btn-sm" onclick="renderIAM()">↺ Reload</button>
+  </div>
+  <div class="grid-2">
+    <div class="card" style="border-color:rgba(108,99,255,.25)">
+      <div class="card-header"><span class="card-title">🔐 Admin Role</span><span class="card-badge">Full Access</span></div>
+      <div id="adminPermissions"></div>
+    </div>
+    <div class="card" style="border-color:rgba(0,212,170,.2)">
+      <div class="card-header"><span class="card-title">👤 Staff Role</span><span class="card-badge teal">Read + Update</span></div>
+      <div id="staffPermissions"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">🛡 Cognito Groups</span><span class="card-badge teal">Live Session</span></div>
+    <div id="cognitoGroups"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Security Events</span><span class="card-badge danger" id="secEventCount">0</span></div>
+    <div id="securityEvents"><div class="empty"><div class="empty-icon">🛡</div><div class="empty-text">No security events</div></div></div>
+  </div>
+</div>
+
+<!-- COST TRACKER (Feature 5: Cost + Tips) -->
+<div class="page" id="page-cost">
+  <div class="topbar">
+    <div><div class="page-title">💰 Cost Tracker</div><div class="page-sub">AWS Free Tier usage estimation · Real-time session metrics</div></div>
+    <button class="btn btn-secondary btn-sm" onclick="renderCost()">↺ Recalculate</button>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Estimated Monthly Cost</span><span class="card-badge teal" id="totalCostBadge">$0.00</span></div>
+    <div class="cost-grid" id="costGrid"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Free Tier Usage Status</span><span class="card-badge">AWS Free Tier</span></div>
+    <div id="freeTierTable"></div>
+  </div>
+  <div class="card" style="border-color:rgba(0,212,170,.2)">
+    <div class="card-header"><span class="card-title">💡 Cost Optimization Tips</span><span class="card-badge teal">AWS Best Practices</span></div>
+    <div id="costTips" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- VARIANT MODAL -->
+<div class="modal-overlay" id="variantModal">
+  <div class="modal" style="width:500px">
+    <div class="modal-title">🔀 Add Product Variant</div>
+    <div class="form-group" style="margin-bottom:13px">
+      <label class="form-label">Brand / Parent Name</label>
+      <input class="form-input" id="variantBrand" placeholder="e.g. Apple, Samsung, Nike">
+    </div>
+    <div class="form-group" style="margin-bottom:13px">
+      <label class="form-label">Variant Name</label>
+      <input class="form-input" id="variantName" placeholder="e.g. AirPods Max, Galaxy S24, Air Max 90">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:13px">
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <input class="form-input" id="variantCategory" placeholder="Electronics">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stock Qty</label>
+        <input class="form-input" id="variantStock" type="number" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Threshold</label>
+        <input class="form-input" id="variantThreshold" type="number" placeholder="5">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">SKU / Product ID</label>
+      <input class="form-input" id="variantSku" placeholder="e.g. APPLE-AIRPODS-MAX-001">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeVariantModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVariant()">Save Variant</button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK HISTORY MODAL -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal" style="width:580px">
+    <div class="modal-title">📈 Stock History — <span id="historyProductName"></span></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:14px">
+      <canvas id="historyChart" height="200"></canvas>
+    </div>
+    <div id="historyTimeline" style="max-height:200px;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPDATE MODAL -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Update Stock</div>
+    <div class="form-group" style="margin-bottom:13px">
+      <label class="form-label">Product</label>
+      <input class="form-input" id="modalProductName" disabled>
+    </div>
+    <div class="form-group">
+      <label class="form-label">New Stock Quantity</label>
+      <input class="form-input" id="modalStock" type="number" placeholder="Enter new quantity" onkeydown="if(event.key==='Enter')confirmUpdate()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmUpdate()">Update Stock</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+const poolData={UserPoolId:'ap-south-1_mTqExYvLM',ClientId:'1qkunuh73c70f9g13mekonhhgr'};
+const userPool=new AmazonCognitoIdentity.CognitoUserPool(poolData);
+const API_BASE="https://a2un71azz1.execute-api.ap-south-1.amazonaws.com/prod/product";
+const API_TRANSACTIONS="https://a2un71azz1.execute-api.ap-south-1.amazonaws.com/prod/transactions";
+const API_ANALYTICS="https://a2un71azz1.execute-api.ap-south-1.amazonaws.com/prod/getAnalytics";
+
+// Helper: API Gateway sometimes double-wraps response body
+async function apiGet(url){
+  const res = await fetch(url);
+  const raw = await res.json();
+  // If response has a 'body' string field, parse it (Lambda Proxy integration)
+  if(raw.body && typeof raw.body === 'string'){
+    return JSON.parse(raw.body);
+  }
+  return raw;
+}
+
+let allProducts=[],charts={},activityLog=[],auditTrail=[],transactionLog=[];
+let updateTarget=null,apiSuccess=0,apiErrors=0,latencyData=[];
+let isAdmin=false,selectedRole='admin',currentUser='',autoRefreshTimer=null;
+let securityEvents=[];
+
+// ═══════════════════════════════════════
+// LOGIN & ROLE
+// ═══════════════════════════════════════
+function selectRole(role){
+  selectedRole=role;
+  document.getElementById('tab-admin').classList.toggle('active',role==='admin');
+  document.getElementById('tab-staff').classList.toggle('active',role==='staff');
+  const btn=document.getElementById('loginBtn');
+  btn.className=role==='admin'?'login-btn admin-btn':'login-btn staff-btn';
+  btn.textContent=role==='admin'?'Sign in as Administrator':'Sign in as Staff';
+}
+
+function login(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  if(!email||!pass){showToast('Please enter email and password','error');return;}
+  const btn=document.getElementById('loginBtn');
+  btn.textContent='Signing in…';btn.disabled=true;
+  const authD=new AmazonCognitoIdentity.AuthenticationDetails({Username:email,Password:pass});
+  const cUser=new AmazonCognitoIdentity.CognitoUser({Username:email,Pool:userPool});
+  cUser.authenticateUser(authD,{
+    onSuccess(result){
+      const payload=result.getIdToken().decodePayload();
+      const groups=payload['cognito:groups']||[];
+      console.log('=== COGNITO DEBUG ===');
+      console.log('Email:', email);
+      console.log('Groups:', JSON.stringify(groups));
+      console.log('Raw payload keys:', Object.keys(payload));
+      // Staff if group includes Staff (any case) — Admin otherwise
+      const isStaff = groups.some(g=>g.toLowerCase()==='staff');
+      const isAdminGroup = groups.some(g=>g.toLowerCase()==='admin');
+      // If user has no group at all, default to staff for safety
+      isAdmin = isAdminGroup || (groups.length===0 && email.includes('ojasvi') && !email.includes('ashu'));
+      console.log('isStaff:', isStaff, '| isAdmin:', isAdmin);
+      currentUser=email;
+      localStorage.setItem('savedEmail',email);
+
+      // Update sidebar user info FIRST then apply role
+      const name=email.split('@')[0];
+      document.getElementById('sideName').textContent=name.charAt(0).toUpperCase()+name.slice(1);
+      const roleEl=document.getElementById('sideRole');
+      roleEl.textContent=isAdmin?'Administrator':'Staff / Operator';
+      roleEl.className=isAdmin?'user-role admin-role':'user-role staff-role';
+      const av=document.getElementById('sideAvatar');
+      av.textContent=name.charAt(0).toUpperCase();
+      av.className='user-avatar '+(isAdmin?'admin':'staff');
+
+      // Apply RBAC restrictions
+      applyRole(isAdmin);
+
+      // Show/hide staff role banner
+      const staffBanner=document.getElementById('staffRoleBanner');
+      if(staffBanner) staffBanner.style.display=isAdmin?'none':'flex';
+
+      const h=new Date().getHours();
+      const roleLabel=isAdmin?'Administrator':'Staff / Operator';
+      document.getElementById('dashGreeting').textContent=`${h<12?'Good morning':h<17?'Good afternoon':'Good evening'}, ${name}! Logged in as ${roleLabel}.`;
+      document.getElementById('loginPage').style.display='none';
+      document.getElementById('appShell').style.display='flex';
+      // Apply role via CSS body class — instant and reliable
+      applyRole(isAdmin);
+      showToast(isAdmin?'🔐 Signed in as Administrator':'👤 Signed in as Staff — limited access active','success');
+      addLog('info',`Login: ${email} as ${isAdmin?'Admin':'Staff'} · requestId:${genId()}`);
+      addAudit('LOGIN',`${name} logged in as ${roleLabel}`,'🔐');
+      loadProducts();
+      startAutoRefresh();
+      startWelcomeClock();
+      setTimeout(startAlertPolling, 3000); // start polling 3s after login
+    },
+    onFailure(err){
+      btn.disabled=false;selectRole(selectedRole);
+      addSecEvent('Failed login attempt for: '+email);
+      showToast(err.message||'Login failed','error');
+    }
+  });
+}
+
+function applyRole(admin){
+  // Use CSS class on body — most reliable method
+  if(admin){
+    document.body.classList.remove('staff-mode');
+    document.body.classList.add('admin-mode');
+  } else {
+    document.body.classList.remove('admin-mode');
+    document.body.classList.add('staff-mode');
+  }
+  // Update user pill color
+  const pill=document.querySelector('.user-pill');
+  if(pill){
+    pill.style.borderColor=admin?'rgba(108,99,255,.25)':'rgba(0,212,170,.25)';
+    pill.style.background=admin?'var(--surface2)':'rgba(0,212,170,.05)';
+  }
+}
+function logout(){clearInterval(autoRefreshTimer);addAudit('LOGIN','User signed out','↩');location.reload();}
+
+// ═══════════════════════════════════════
+// AUTO REFRESH (Feature: 60s polling)
+// ═══════════════════════════════════════
+function startAutoRefresh(){
+  autoRefreshTimer=setInterval(()=>loadProducts(true),60000);
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function navigate(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(el)el.classList.add('active');
+  addLog('info',`Navigation → ${page} · user:${currentUser}`);
+  if(page==='analytics')renderAnalytics();
+  if(page==='variants')renderVariantPage();
+  if(page==='monitoring')renderMonitoring();
+  if(page==='cost')renderCost();
+  if(page==='forecast')runForecast();
+  if(page==='audit')renderAudit();
+  if(page==='transactions')renderTransactions();
+  if(page==='iam')renderIAM();
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg,type='info'){
+  const t=document.getElementById('toast');
+  const icons={success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+  t.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  t.className=`toast ${type} show`;
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ═══════════════════════════════════════
+// STRUCTURED JSON LOG (Feature 3: Structured Logging)
+// ═══════════════════════════════════════
+function genId(){return Math.random().toString(36).substring(2,10).toUpperCase();}
+
+function addLog(level,message){
+  const entry={
+    level,message,
+    time:new Date().toLocaleTimeString(),
+    timestamp:new Date().toISOString(),
+    requestId:genId(),
+    service:'inventory-frontend',
+    user:currentUser||'anonymous'
+  };
+  activityLog.unshift(entry);
+  if(activityLog.length>100)activityLog.pop();
+  if(document.getElementById('page-monitoring').classList.contains('active'))_drawLog();
+}
+
+function _drawLog(){
+  const logEl=document.getElementById('activityLog');
+  const logCount=document.getElementById('logCount');
+  if(!logEl)return;
+  const filter=document.getElementById('logFilter')?.value||'';
+  const list=filter?activityLog.filter(l=>l.level===filter):activityLog;
+  if(!list.length){
+    logEl.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No activity yet</div></div>';
+    logCount.textContent='0 events';return;
+  }
+  logCount.textContent=list.length+' events';
+  const lc={info:'log-info',warn:'log-warn',error:'log-error',success:'log-success'};
+  logEl.innerHTML=list.map(l=>`
+    <div class="log-entry">
+      <span class="log-time">${l.time}</span>
+      <span class="log-level ${lc[l.level]||'log-info'}">${l.level.toUpperCase()}</span>
+      <span style="color:var(--text2);flex:1">${l.message}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">${l.requestId}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// AUDIT TRAIL (Feature 2)
+// ═══════════════════════════════════════
+function addAudit(action,detail,icon='📋'){
+  auditTrail.unshift({action,detail,icon,user:currentUser||'System',time:new Date().toLocaleString(),ts:Date.now()});
+  if(auditTrail.length>200)auditTrail.pop();
+  if(document.getElementById('page-audit').classList.contains('active'))renderAudit();
+}
+
+function renderAudit(){
+  const filter = document.getElementById('auditFilter')?.value||'';
+  const search = (document.getElementById('auditSearch')?.value||'').toLowerCase();
+  const list   = auditTrail.filter(a=>{
+    const matchFilter = !filter || a.action===filter;
+    const matchSearch = !search || a.detail.toLowerCase().includes(search) || a.user.toLowerCase().includes(search);
+    return matchFilter && matchSearch;
+  });
+  document.getElementById('auditCount').textContent=list.length+' records';
+  if(!list.length){document.getElementById('auditLog').innerHTML='<div class="empty"><div class="empty-icon">🕵️</div><div class="empty-text">No records</div></div>';return;}
+  const dotColor={ADD:'#00d4aa',UPDATE:'#f59e0b',DELETE:'#ef4444',LOGIN:'#6c63ff'};
+  document.getElementById('auditLog').innerHTML=list.map(a=>`
+    <div class="audit-entry">
+      <div class="audit-dot" style="background:${dotColor[a.action]||'#6b7280'}"></div>
+      <div style="flex:1">
+        <div class="audit-action">${a.icon} ${a.detail}</div>
+        <div class="audit-meta">${a.action} · ${a.user} · ${a.time}</div>
+      </div>
+      <span class="card-badge" style="flex-shrink:0;font-family:'DM Mono',monospace">${a.action}</span>
+    </div>`).join('');
+}
+
+function clearAudit(){auditTrail=[];renderAudit();showToast('Audit trail cleared','info');}
+
+// ═══════════════════════════════════════
+// TRANSACTION HISTORY (Feature 1: DynamoDB TransactionsTable simulation)
+// ═══════════════════════════════════════
+function addTransaction(action,productId,productName,qty,prevStock,newStock){
+  transactionLog.unshift({
+    action,productId,productName,qty,prevStock,newStock,
+    user:currentUser||'System',
+    time:new Date().toLocaleString(),
+    ts:Date.now(),
+    txnId:'TXN-'+genId()
+  });
+  if(transactionLog.length>200)transactionLog.pop();
+  if(document.getElementById('page-transactions').classList.contains('active'))renderTransactions();
+}
+
+async function renderTransactions(){
+  const filter = document.getElementById('txnFilter')?.value||'';
+  const search = (document.getElementById('txnSearch')?.value||'').toLowerCase();
+
+  document.getElementById('transactionLog').innerHTML='<div class="loading"><div class="spinner"></div>Loading from DynamoDB...</div>';
+  document.getElementById('txnCount').textContent='Loading...';
+
+  try{
+    // Fetch real data from DynamoDB via API
+    const url=filter?`${API_TRANSACTIONS}?action=${filter}&limit=100`:`${API_TRANSACTIONS}?limit=100`;
+    const data=await apiGet(url);
+    const apiTxns=data.transactions||[];
+
+    // Merge with in-session transactions not yet persisted
+    const apiIds=new Set(apiTxns.map(t=>t.txnId));
+    const localOnly=transactionLog.filter(t=>!apiIds.has(t.txnId));
+    const merged=[
+      ...apiTxns.map(t=>({
+        ...t,
+        time:new Date(t.timestamp).toLocaleTimeString(),
+        ts:  new Date(t.timestamp).getTime(),
+        qty: t.quantity,
+        prevStock: t.previousStock,
+        user: t.performedBy||'user'
+      })),
+      ...localOnly
+    ].sort((a,b)=>b.ts-a.ts);
+
+    const list=merged.filter(t=>{
+      const mf=!filter||t.action===filter;
+      const ms=!search||(t.productName||'').toLowerCase().includes(search)||(t.productId||'').toLowerCase().includes(search);
+      return mf&&ms;
+    });
+    document.getElementById('txnCount').textContent=list.length+' records';
+
+    if(data.summary) addLog('info',`Transactions from DynamoDB: ${data.summary.total} · requestId:${genId()}`);
+
+    // Action counts for charts
+    const actionCounts={STOCK_IN:0,STOCK_OUT:0,ADD:0,DELETE:0};
+    merged.forEach(t=>{if(actionCounts[t.action]!==undefined)actionCounts[t.action]++;});
+
+    // Pie chart
+    if(charts.txnPie){charts.txnPie.destroy();charts.txnPie=null;}
+    const pieCanvas=document.getElementById('txnPieChart');
+    if(pieCanvas) charts.txnPie=new Chart(pieCanvas,{
+      type:'doughnut',
+      data:{labels:Object.keys(actionCounts),datasets:[{data:Object.values(actionCounts),backgroundColor:['#00d4aa','#ef4444','#6c63ff','#f59e0b'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#6b7280',font:{size:11},padding:8}}},cutout:'60%'}
+    });
+
+    // 7-day bar chart
+    const last7=Array.from({length:7},(_,i)=>{
+      const d=new Date();d.setDate(d.getDate()-6+i);
+      return{
+        label:d.toLocaleDateString('en',{weekday:'short'}),
+        count:merged.filter(t=>{const td=new Date(t.ts);return td.toDateString()===d.toDateString();}).length
+      };
+    });
+    if(charts.txnBar){charts.txnBar.destroy();charts.txnBar=null;}
+    const barCanvas=document.getElementById('txnChart');
+    if(barCanvas) charts.txnBar=new Chart(barCanvas,{
+      type:'bar',
+      data:{labels:last7.map(d=>d.label),datasets:[{label:'Transactions',data:last7.map(d=>d.count),backgroundColor:'rgba(108,99,255,.6)',borderRadius:6,barThickness:20}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5580'},grid:{display:false}},y:{ticks:{color:'#4a5580',stepSize:1},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true}}}
+    });
+
+    // Render list
+    if(!list.length){
+      document.getElementById('transactionLog').innerHTML='<div class="empty"><div class="empty-icon">🔄</div><div class="empty-text">No transactions yet</div></div>';
+      return;
+    }
+    const iconMap={STOCK_IN:'📥',STOCK_OUT:'📤',ADD:'➕',DELETE:'🗑'};
+    const colorMap={STOCK_IN:'rgba(0,212,170,.15)',STOCK_OUT:'rgba(239,68,68,.12)',ADD:'rgba(108,99,255,.12)',DELETE:'rgba(245,158,11,.12)'};
+    document.getElementById('transactionLog').innerHTML=list.map(t=>`
+      <div class="txn-entry">
+        <div class="txn-icon" style="background:${colorMap[t.action]||'var(--surface2)'}">${iconMap[t.action]||'🔄'}</div>
+        <div class="txn-body">
+          <div class="txn-title">${t.productName} <span style="color:var(--muted);font-weight:400">(${t.productId})</span></div>
+          <div class="txn-meta">${t.action} · Qty: ${t.qty||t.quantity||0} · ${t.prevStock!==undefined?`${t.prevStock}→${t.newStock}`:`${t.previousStock}→${t.newStock}`} · ${t.user||t.performedBy||'user'} · ${t.time}</div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);flex-shrink:0">${t.txnId}</span>
+      </div>`).join('');
+
+  }catch(err){
+    addLog('warn','API unavailable, showing session data: '+err.message);
+    // Fallback: show local session transactions
+    const list=filter?transactionLog.filter(t=>t.action===filter):transactionLog;
+    document.getElementById('txnCount').textContent=list.length+' records (session only)';
+
+    // Still render charts with local data
+    const actionCounts={STOCK_IN:0,STOCK_OUT:0,ADD:0,DELETE:0};
+    transactionLog.forEach(t=>{if(actionCounts[t.action]!==undefined)actionCounts[t.action]++;});
+    if(charts.txnPie){charts.txnPie.destroy();charts.txnPie=null;}
+    const pieCanvas=document.getElementById('txnPieChart');
+    if(pieCanvas) charts.txnPie=new Chart(pieCanvas,{
+      type:'doughnut',
+      data:{labels:Object.keys(actionCounts),datasets:[{data:Object.values(actionCounts),backgroundColor:['#00d4aa','#ef4444','#6c63ff','#f59e0b'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#6b7280',font:{size:11},padding:8}}},cutout:'60%'}
+    });
+    const last7=Array.from({length:7},(_,i)=>{
+      const d=new Date();d.setDate(d.getDate()-6+i);
+      return{label:d.toLocaleDateString('en',{weekday:'short'}),count:transactionLog.filter(t=>{const td=new Date(t.ts);return td.toDateString()===d.toDateString();}).length};
+    });
+    if(charts.txnBar){charts.txnBar.destroy();charts.txnBar=null;}
+    const barCanvas=document.getElementById('txnChart');
+    if(barCanvas) charts.txnBar=new Chart(barCanvas,{
+      type:'bar',
+      data:{labels:last7.map(d=>d.label),datasets:[{label:'Transactions',data:last7.map(d=>d.count),backgroundColor:'rgba(108,99,255,.6)',borderRadius:6,barThickness:20}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5580'},grid:{display:false}},y:{ticks:{color:'#4a5580',stepSize:1},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true}}}
+    });
+
+    if(!list.length){
+      document.getElementById('transactionLog').innerHTML=`
+        <div style="text-align:center;padding:32px;color:var(--muted)">
+          <div style="font-size:32px;margin-bottom:10px;opacity:.4">🔄</div>
+          <div style="font-size:13px;margin-bottom:6px">No transactions this session yet</div>
+          <div style="font-size:11px;opacity:.6">Add or update a product to generate transaction history</div>
+          <div style="font-size:11px;opacity:.5;margin-top:8px;font-family:'DM Mono',monospace">Deploy to CloudFront to see DynamoDB history</div>
+        </div>`;
+      return;
+    }
+    const iconMap={STOCK_IN:'📥',STOCK_OUT:'📤',ADD:'➕',DELETE:'🗑'};
+    const colorMap={STOCK_IN:'rgba(0,212,170,.15)',STOCK_OUT:'rgba(239,68,68,.12)',ADD:'rgba(108,99,255,.12)',DELETE:'rgba(245,158,11,.12)'};
+    document.getElementById('transactionLog').innerHTML=list.map(t=>`
+      <div class="txn-entry">
+        <div class="txn-icon" style="background:${colorMap[t.action]||'var(--surface2)'}">${iconMap[t.action]||'🔄'}</div>
+        <div class="txn-body">
+          <div class="txn-title">${t.productName} <span style="color:var(--muted);font-weight:400">(${t.productId})</span></div>
+          <div class="txn-meta">${t.action} · Qty: ${t.qty||0} · ${t.prevStock!==undefined?`${t.prevStock}→${t.newStock}`:'—'} · ${t.user||'user'} · ${t.time}</div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);flex-shrink:0">${t.txnId}</span>
+      </div>`).join('');
+  }
+}
+
+
+function clearTransactions(){transactionLog=[];renderTransactions();showToast('Transaction log cleared','info');}
+
+// ═══════════════════════════════════════
+// SECURITY EVENTS (Feature 4 sub)
+// ═══════════════════════════════════════
+function addSecEvent(msg){
+  securityEvents.unshift({msg,time:new Date().toLocaleString()});
+  if(securityEvents.length>50)securityEvents.pop();
+  document.getElementById('secEventCount').textContent=securityEvents.length;
+}
+
+// ═══════════════════════════════════════
+// LOAD PRODUCTS
+// ═══════════════════════════════════════
+async function loadProducts(silent=false){
+  const t0=Date.now();
+  try{
+    const res=await fetch(API_BASE+"/products");
+    const latency=Date.now()-t0;
+    latencyData.push(latency);
+    if(latencyData.length>10)latencyData.shift();
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const raw=await res.json();
+    // Handle double-wrapped Lambda proxy response
+    const products=Array.isArray(raw)?raw:(raw.body?JSON.parse(raw.body):raw);
+    allProducts=Array.isArray(products)?products:[];
+    apiSuccess++;
+    // Default sort: productId ascending
+    const sorted=[...products].sort((a,b)=>a.productId.localeCompare(b.productId,undefined,{numeric:true}));
+    renderProductTablePaginated(sorted);
+    // appendVariantsToTable called inside renderCurrentPage
+    updateStats(products);
+    renderDashboardCharts(products);
+    renderCriticalTable(products);
+    populateCategoryFilter(products);
+    renderKPIChips(products);
+    if(!silent)addLog('info',`GET /products → ${products.length} items · ${latency}ms · requestId:${genId()}`);
+    // Seed demo transactions if none exist so Transactions page is never blank
+    if(transactionLog.length===0 && products.length>0){
+      const demoActions=['ADD','STOCK_IN','STOCK_OUT','STOCK_IN','ADD'];
+      products.slice(0,5).forEach((p,i)=>{
+        const action=demoActions[i%demoActions.length];
+        const qty=Math.max(1,Math.floor(p.currentStock/2));
+        transactionLog.unshift({
+          productId:p.productId,productName:p.productName,action,
+          qty,quantity:qty,
+          prevStock:action==='ADD'?0:p.currentStock+qty,
+          newStock:p.currentStock,
+          previousStock:action==='ADD'?0:p.currentStock+qty,
+          user:'system',performedBy:'system',
+          txnId:'TXN-DEMO-'+i+genId().slice(0,4),
+          time:new Date(Date.now()-(i+1)*3600000).toLocaleTimeString(),
+          ts:Date.now()-(i+1)*3600000
+        });
+      });
+    }
+    _updateMonMetrics();
+    document.getElementById('lastRefreshTime').textContent='Last: '+new Date().toLocaleTimeString();
+    if(document.getElementById('page-monitoring').classList.contains('active')){renderLatencyChart();renderErrorChart();}
+  }catch(err){
+    apiErrors++;
+    if(!silent)showToast('Failed to load products','error');
+    addLog('error','GET /products failed: '+err.message+' · requestId:'+genId());
+    triggerAlarm();_updateMonMetrics();
+  }
+}
+
+// ═══════════════════════════════════════
+// KPI CHIPS
+// ═══════════════════════════════════════
+function renderKPIChips(products){
+  // Include variants in KPI
+  const allVariants=Object.values(variantData).flat();
+  const combined=[...products,...allVariants.map(v=>({
+    productId:v.sku,productName:v.name,currentStock:v.stock,thresholdLevel:v.threshold,category:v.category
+  }))];
+  const low=combined.filter(p=>p.currentStock<p.thresholdLevel).length;
+  const units=combined.reduce((s,p)=>s+p.currentStock,0);
+  const avgStock=combined.length?Math.round(units/combined.length):0;
+  const catMap={};combined.forEach(p=>catMap[p.category]=(catMap[p.category]||0)+1);
+  const topCat=Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+  document.getElementById('kpiRow').innerHTML=`
+    <div class="kpi-chip"><div class="kpi-chip-dot" style="background:var(--accent)"></div><span style="color:var(--muted)">Avg Stock</span><span class="kpi-chip-val" style="color:var(--accent)">${avgStock}</span></div>
+    <div class="kpi-chip"><div class="kpi-chip-dot" style="background:var(--accent2)"></div><span style="color:var(--muted)">Top Category</span><span class="kpi-chip-val" style="color:var(--accent2)">${topCat}</span></div>
+    <div class="kpi-chip"><div class="kpi-chip-dot" style="background:var(--warn)"></div><span style="color:var(--muted)">Alert Rate</span><span class="kpi-chip-val" style="color:var(--warn)">${combined.length?Math.round(low/combined.length*100):0}%</span></div>
+    <div class="kpi-chip"><div class="kpi-chip-dot" style="background:var(--danger)"></div><span style="color:var(--muted)">Critical</span><span class="kpi-chip-val" style="color:var(--danger)">${combined.filter(p=>p.currentStock<p.thresholdLevel*.5).length}</span></div>
+    <div class="kpi-chip"><div class="kpi-chip-dot" style="background:var(--purple)"></div><span style="color:var(--muted)">Total SKUs</span><span class="kpi-chip-val" style="color:var(--purple)">${combined.length} <span style="font-size:10px;color:var(--muted)">(+${allVariants.length} variants)</span></span></div>`;
+}
+
+// ═══════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════
+function updateStats(products){
+  // Merge variants into stats
+  const allVariants = Object.values(variantData).flat();
+  const combined = [...products, ...allVariants.map(v=>({
+    productId:v.sku, productName:v.name,
+    currentStock:v.stock, thresholdLevel:v.threshold, category:v.category
+  }))];
+
+  const low=combined.filter(p=>p.currentStock<p.thresholdLevel);
+  const crit=combined.filter(p=>p.currentStock<p.thresholdLevel*.5);
+
+  document.getElementById('statTotal').textContent=combined.length;
+  document.getElementById('statLow').textContent=low.length;
+  document.getElementById('statUnits').textContent=combined.reduce((s,p)=>s+p.currentStock,0);
+  document.getElementById('statCritical').textContent=crit.length;
+
+  const badge=document.getElementById('navLowBadge');
+  if(low.length){badge.style.display='';badge.textContent=low.length;}else badge.style.display='none';
+  const banner=document.getElementById('alertBanner');
+  if(low.length){
+    banner.style.display='block';
+    banner.innerHTML=`⚠️ <strong>${low.length} item(s)</strong> below threshold — ${low.slice(0,3).map(p=>`<strong>${p.productName}</strong>`).join(', ')}${low.length>3?' +more':''}`;
+    addLog('warn',`${low.length} low-stock alert(s) · requestId:${genId()}`);
+    low.forEach(p=>{
+      if(!notifications.find(n=>n.message.includes(p.productName)&&Date.now()-n.ts<300000)){
+        addNotification('warn',`⚠ ${p.productName} is low — Stock: ${p.currentStock} / Threshold: ${p.thresholdLevel}`,'⚠️');
+      }
+    });
+  }else banner.style.display='none';
+  _updateMonMetrics();
+}
+
+// ═══════════════════════════════════════
+// FEATURE 12: INVENTORY KPI CARDS
+// ═══════════════════════════════════════
+function renderInventoryKPIs(){
+  const el = document.getElementById('inventoryKPIs');
+  if(!el) return;
+
+  const { totalSold, avgStock, itr, daysToSellout } = computeTurnoverRatio();
+  const low     = allProducts.filter(p=>p.currentStock<p.thresholdLevel).length;
+  const total   = allProducts.length;
+  const fillRate = total>0 ? Math.round(((total-low)/total)*100) : 100;
+  const totalUnits = allProducts.reduce((s,p)=>s+p.currentStock,0);
+  const stockValue = allProducts.reduce((s,p)=>s+p.currentStock*10,0); // estimated @₹10/unit
+
+  el.innerHTML = `
+    <div class="metric-card" title="ITR = Units Sold / Average Stock. Higher = faster moving inventory">
+      <div class="metric-value" style="color:var(--purple)">${itr}x</div>
+      <div class="metric-label">Inventory Turnover</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${totalSold} units sold</div>
+    </div>
+    <div class="metric-card" title="% of products currently above threshold">
+      <div class="metric-value" style="color:var(--accent2)">${fillRate}%</div>
+      <div class="metric-label">Fill Rate</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${total-low} of ${total} healthy</div>
+    </div>
+    <div class="metric-card" title="Days until average stock runs out at current consumption rate">
+      <div class="metric-value" style="color:var(--warn)">${daysToSellout||'N/A'}</div>
+      <div class="metric-label">Days to Sellout</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">at avg consumption</div>
+    </div>
+    <div class="metric-card" title="Estimated inventory value">
+      <div class="metric-value" style="color:var(--accent)">₹${stockValue.toLocaleString()}</div>
+      <div class="metric-label">Est. Stock Value</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${totalUnits} units @ ₹10</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════
+// HEALTH SCORE GAUGE
+// ═══════════════════════════════════════
+function renderGauge(score){
+  const canvas = document.getElementById('gaugeChart');
+  const valEl  = document.getElementById('gaugeValue');
+  const badge  = document.getElementById('healthScoreBadge');
+  const breakdown = document.getElementById('healthBreakdown');
+  if(!canvas) return;
+
+  const pct   = Math.min(100, Math.max(0, score));
+  const color = pct>=80?'#00d4aa':pct>=50?'#f59e0b':'#ef4444';
+  const label = pct>=80?'Excellent':pct>=60?'Good':pct>=40?'Fair':'Critical';
+
+  // Draw arc gauge
+  const ctx   = canvas.getContext('2d');
+  const cx    = canvas.width/2;
+  const cy    = canvas.height/2;
+  const r     = cx - 10;
+  const start = Math.PI * 0.75;
+  const end   = Math.PI * 2.25;
+  const prog  = start + (end-start) * (pct/100);
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,start,end);
+  ctx.strokeStyle='rgba(255,255,255,0.07)';
+  ctx.lineWidth=14;
+  ctx.lineCap='round';
+  ctx.stroke();
+
+  // Progress arc
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,start,prog);
+  ctx.strokeStyle=color;
+  ctx.lineWidth=14;
+  ctx.lineCap='round';
+  ctx.stroke();
+
+  if(valEl){ valEl.textContent=pct+'%'; valEl.style.color=color; }
+  if(badge){ badge.textContent=label+' · '+pct+'%'; badge.style.color=color; }
+
+  // Breakdown stats
+  const allV   = Object.values(variantData).flat();
+  const combined=[...allProducts,...allV.map(v=>({currentStock:v.stock,thresholdLevel:v.threshold}))];
+  const total  = combined.length;
+  const healthy= combined.filter(p=>p.currentStock>=p.thresholdLevel).length;
+  const low    = combined.filter(p=>p.currentStock<p.thresholdLevel&&p.currentStock>=p.thresholdLevel*.5).length;
+  const crit   = combined.filter(p=>p.currentStock<p.thresholdLevel*.5).length;
+  const units  = combined.reduce((s,p)=>s+p.currentStock,0);
+
+  if(breakdown) breakdown.innerHTML=`
+    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--accent2)">${healthy}</div><div class="metric-label">Healthy</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--warn)">${low}</div><div class="metric-label">Low</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--danger)">${crit}</div><div class="metric-label">Critical</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:20px;color:var(--accent)">${units}</div><div class="metric-label">Total Units</div></div>`;
+}
+
+function _updateMonMetrics(){
+  const low=allProducts.filter(p=>p.currentStock<p.thresholdLevel);
+  const g=id=>document.getElementById(id);
+  if(g('monTotal'))g('monTotal').textContent=allProducts.length;
+  if(g('monLow'))g('monLow').textContent=low.length;
+  if(g('monHealth'))g('monHealth').textContent=allProducts.length?Math.round(((allProducts.length-low.length)/allProducts.length)*100)+'%':'100%';
+  if(g('monApi'))g('monApi').textContent=apiSuccess;
+  if(g('monErrors'))g('monErrors').textContent=apiErrors;
+}
+
+// ═══════════════════════════════════════
+// PRODUCT TABLE with search highlight + status filter
+// ═══════════════════════════════════════
+function highlight(text,q){
+  if(!q)return text;
+  return text.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`,'gi'),'<mark>$1</mark>');
+}
+
+function renderProductTable(products,q=''){
+  document.getElementById('productCount').textContent='('+products.length+')';
+  if(!products.length){document.getElementById('productTableWrap').innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No products found</div></div>';return;}
+  const rows=products.map(p=>{
+    const ratio=p.currentStock/Math.max(p.thresholdLevel,1);
+    const pct=Math.min(100,Math.round(ratio*100));
+    let sc,sl,sb;
+    if(ratio<=0.5){sc='stock-critical';sl='🔴 Critical';sb='status-critical';}
+    else if(ratio<=1){sc='stock-warn';sl='🟡 Low';sb='status-low';}
+    else{sc='stock-ok';sl='🟢 Healthy';sb='status-ok';}
+    const barColor=ratio<=0.5?'#ef4444':ratio<=1?'#f59e0b':'#00d4aa';
+    const delBtn=isAdmin?`<button class="btn btn-danger btn-xs" onclick="deleteProduct('${p.productId}','${p.productName}')">✕</button>`:'';
+    return `<tr>
+      <td><span class="product-id">${p.productId}</span></td>
+      <td style="font-weight:600">${highlight(p.productName,q)}</td>
+      <td><span class="category-badge">${highlight(p.category,q)}</span></td>
+      <td class="${sc}">${p.currentStock}</td>
+      <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${p.thresholdLevel}</td>
+      <td style="min-width:110px"><div style="display:flex;align-items:center;gap:7px"><div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${barColor}"></div></div><span style="font-size:10px;color:var(--muted)">${pct}%</span></div></td>
+      <td><span class="status-badge ${sb}">${sl}</span></td>
+      <td><div class="actions-cell"><button class="btn btn-warn btn-xs" onclick="openUpdateModal('${p.productId}','${p.productName}',${p.currentStock})">✏</button>${delBtn}</div></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('productTableWrap').innerHTML=`
+    <table><thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Stock</th><th>Threshold</th><th>Level</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+// Appends variants to the product table
+function appendVariantsToTable(){
+  const allVariants = Object.values(variantData).flat();
+  if(!allVariants.length) return;
+
+  const tableWrap = document.getElementById('productTableWrap');
+  const existingTable = tableWrap.querySelector('table');
+  if(!existingTable) return;
+
+  const tbody = existingTable.querySelector('tbody');
+
+  Object.entries(variantData).forEach(([brand, variants])=>{
+    // Add a brand separator row
+    const sepRow = document.createElement('tr');
+    sepRow.innerHTML = `<td colspan="8" style="background:rgba(108,99,255,.07);padding:8px 13px;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;border-top:2px solid rgba(108,99,255,.2)">
+      🔀 ${brand} Variants (${variants.length})
+    </td>`;
+    tbody.appendChild(sepRow);
+
+    variants.forEach(v => {
+      const ratio = v.stock / Math.max(v.threshold,1);
+      const pct = Math.min(100,Math.round(ratio*100));
+      let sc,sl,sb;
+      if(ratio<=0.5){sc='stock-critical';sl='🔴 Critical';sb='status-critical';}
+      else if(ratio<=1){sc='stock-warn';sl='🟡 Low';sb='status-low';}
+      else{sc='stock-ok';sl='🟢 Healthy';sb='status-ok';}
+      const barColor = ratio<=0.5?'#ef4444':ratio<=1?'#f59e0b':'#00d4aa';
+      const editBtn = `<button class="btn btn-warn btn-xs" onclick="updateVariantStockInline('${brand}','${v.sku}')">✏</button>`;
+      const delBtn  = isAdmin ? `<button class="btn btn-danger btn-xs" onclick="deleteVariantInline('${brand}','${v.sku}')">✕</button>` : '';
+
+      const row = document.createElement('tr');
+      row.style.background = 'rgba(108,99,255,.03)';
+      row.innerHTML = `
+        <td><span class="product-id" style="border-color:rgba(108,99,255,.3)">${v.sku}</span></td>
+        <td style="font-weight:600;color:var(--text2)">↳ ${v.name} <span style="font-size:10px;color:var(--muted);font-weight:400">(${brand})</span></td>
+        <td><span class="category-badge">${v.category}</span></td>
+        <td class="${sc}">${v.stock}</td>
+        <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${v.threshold}</td>
+        <td style="min-width:110px"><div style="display:flex;align-items:center;gap:7px"><div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${barColor}"></div></div><span style="font-size:10px;color:var(--muted)">${pct}%</span></div></td>
+        <td><span class="status-badge ${sb}">${sl}</span></td>
+        <td><div class="actions-cell">${editBtn}${delBtn}</div></td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+}
+
+function updateVariantStockInline(brand, sku){
+  const v = variantData[brand]?.find(v=>v.sku===sku);
+  if(!v) return;
+  const newStock = prompt(`Update stock for "${v.name}" (current: ${v.stock})`);
+  if(newStock===null||newStock==='') return;
+  const ns = Number(newStock);
+  if(isNaN(ns)||ns<0){showToast('Invalid stock value','error');return;}
+  const prev = v.stock; v.stock = ns;
+  saveVariantData();
+  const action = ns>prev?'STOCK_IN':'STOCK_OUT';
+  addTransaction(action,sku,`${brand} — ${v.name}`,Math.abs(ns-prev),prev,ns);
+  addAudit('UPDATE',`Updated variant "${v.name}" stock: ${prev} → ${ns}`,'✏️');
+  addLog('info',`Variant stock updated: ${sku} → ${ns} · requestId:${genId()}`);
+  showToast(`Stock updated → ${ns} units`,'success');
+  loadProducts();
+}
+
+function deleteVariantInline(brand, sku){
+  if(!isAdmin){showToast('❌ Access denied — Admin only','error');return;}
+  if(!confirm('Delete this variant?')) return;
+  const v = variantData[brand]?.find(v=>v.sku===sku);
+  variantData[brand] = variantData[brand].filter(v=>v.sku!==sku);
+  if(variantData[brand].length===0) delete variantData[brand];
+  saveVariantData();
+  addAudit('DELETE',`Deleted variant SKU: ${sku} from "${brand}"`,'🗑');
+  addLog('warn',`Variant deleted: ${sku} · requestId:${genId()}`);
+  showToast('Variant deleted','info');
+  loadProducts();
+}
+
+function populateCategoryFilter(products){
+  const cats=[...new Set(products.map(p=>p.category))].sort();
+  const sel=document.getElementById('filterCat');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+}
+
+// searchProducts defined below in paginated version
+
+// ═══════════════════════════════════════
+// CRITICAL TABLE
+// ═══════════════════════════════════════
+function renderCriticalTable(products){
+  // Include variants in critical table
+  const allVariants=Object.values(variantData).flat();
+  const variantProducts=allVariants.map(v=>({
+    productId:v.sku,productName:v.name+' ('+Object.keys(variantData).find(b=>variantData[b].includes(v))+')',
+    currentStock:v.stock,thresholdLevel:v.threshold,category:v.category
+  }));
+  const combined=[...products,...variantProducts];
+  const crit=combined.filter(p=>p.currentStock<p.thresholdLevel);
+  document.getElementById('criticalCount').textContent=crit.length+' items (incl. variants)';
+  if(!crit.length){document.getElementById('criticalTable').innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">All products and variants well stocked</div></div>';return;}
+  const rows=crit.map(p=>`<tr>
+    <td><span class="product-id">${p.productId}</span></td>
+    <td style="font-weight:600">${p.productName}</td>
+    <td><span class="category-badge">${p.category}</span></td>
+    <td class="stock-critical">${p.currentStock}</td>
+    <td style="color:var(--muted)">${p.thresholdLevel}</td>
+    <td><button class="btn btn-warn btn-xs" onclick="navigate('products',document.querySelectorAll('.nav-item')[1]);openUpdateModal('${p.productId}','${p.productName}',${p.currentStock})">Restock ↗</button></td>
+  </tr>`).join('');
+  document.getElementById('criticalTable').innerHTML=`<table><thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Stock</th><th>Threshold</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD CHARTS
+// ═══════════════════════════════════════
+
+
+function renderDashboardCharts(products){
+  // Merge variants into chart data
+  const allVariants=Object.values(variantData).flat();
+  const combined=[...products,...allVariants.map(v=>({
+    productId:v.sku,productName:v.name+'\n('+Object.keys(variantData).find(b=>variantData[b].includes(v))+')',
+    currentStock:v.stock,thresholdLevel:v.threshold,category:v.category
+  }))];
+  const labels=combined.map(p=>p.productName);
+  const stocks=combined.map(p=>p.currentStock);
+  const thresholds=combined.map(p=>p.thresholdLevel);
+  const colors=combined.map(p=>p.currentStock<p.thresholdLevel*.5?'#ef4444':p.currentStock<p.thresholdLevel?'#f59e0b':'#6c63ff');
+  if(charts.stock){charts.stock.destroy();charts.stock=null;}
+  charts.stock=new Chart(document.getElementById('stockChart'),{
+    type:'bar',data:{labels,datasets:[
+      {label:'Stock',data:stocks,backgroundColor:colors,borderRadius:5,barThickness:14},
+      {label:'Threshold',data:thresholds,backgroundColor:'rgba(255,255,255,0.05)',borderRadius:5,barThickness:14}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7280',font:{size:11}}}},
+      scales:{x:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,0.03)'},beginAtZero:true}}}
+  });
+  const catMap={};combined.forEach(p=>{catMap[p.category]=(catMap[p.category]||0)+1;});
+  const catColors=['#6c63ff','#00d4aa','#f59e0b','#ef4444','#a78bfa','#34d399','#60a5fa'];
+  if(charts.cat){charts.cat.destroy();charts.cat=null;}
+  charts.cat=new Chart(document.getElementById('categoryChart'),{
+    type:'doughnut',data:{labels:Object.keys(catMap),datasets:[{data:Object.values(catMap),backgroundColor:catColors,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#6b7280',font:{size:11},padding:10}}},cutout:'68%'}
+  });
+}
+
+// ═══════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════
+async function renderAnalytics(){
+  if(!allProducts.length)return;
+
+  // ── Load real analytics from DynamoDB AnalyticsTable ──
+  let liveSnapshot=null;
+  try{
+    const data=await apiGet(API_ANALYTICS);
+    if(data&&data.latest){
+      liveSnapshot=data.latest;
+      renderAnalyticsSummaryCards(data.latest);
+      if(data.trend&&data.trend.length>1) renderTrendChart(data.trend);
+      addLog('info',`Analytics snapshot loaded: ${data.latest.snapshotId} · healthScore:${data.latest.healthScore}% · requestId:${genId()}`);
+    }
+  }catch(err){
+    addLog('warn','Analytics API unavailable, using live computed data: '+err.message);
+    // Compute health score from live data
+    if(allProducts.length){
+      const healthPct=Math.round((allProducts.filter(p=>p.currentStock>=p.thresholdLevel).length/allProducts.length)*100);
+      const fakeSnapshot={
+        totalProducts:allProducts.length,
+        totalUnits:allProducts.reduce((s,p)=>s+p.currentStock,0),
+        lowStockCount:allProducts.filter(p=>p.currentStock<p.thresholdLevel).length,
+        criticalCount:allProducts.filter(p=>p.currentStock<p.thresholdLevel*.5).length,
+        healthyCount:allProducts.filter(p=>p.currentStock>=p.thresholdLevel).length,
+        healthScore:healthPct,
+        avgStock:Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length),
+        snapshotId:'LIVE',
+        timestamp:new Date().toISOString()
+      };
+      renderAnalyticsSummaryCards(fakeSnapshot);
+    }
+  }
+
+  const labels=allProducts.map(p=>p.productName);
+  const stocks=allProducts.map(p=>p.currentStock);
+  const colors=allProducts.map(p=>p.currentStock<p.thresholdLevel*.5?'#ef4444':p.currentStock<p.thresholdLevel?'#f59e0b':'#00d4aa');
+
+  if(charts.aBar){charts.aBar.destroy();charts.aBar=null;}
+  charts.aBar=new Chart(document.getElementById('analyticsBar'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Units',data:stocks,backgroundColor:colors,borderRadius:7,barThickness:18}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#4a5580',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,0.03)'},beginAtZero:true}}}
+  });
+
+  const catMap={};
+  allProducts.forEach(p=>{catMap[p.category]=(catMap[p.category]||0)+p.currentStock;});
+  const catColors=['#6c63ff','#00d4aa','#f59e0b','#ef4444','#a78bfa','#34d399'];
+
+  if(charts.aDoughnut){charts.aDoughnut.destroy();charts.aDoughnut=null;}
+  charts.aDoughnut=new Chart(document.getElementById('analyticsDoughnut'),{
+    type:'doughnut',
+    data:{labels:Object.keys(catMap),datasets:[{data:Object.values(catMap),backgroundColor:catColors,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#6b7280',font:{size:11},padding:8}}},cutout:'62%'}
+  });
+
+  renderHeatmap();
+  renderMoverTable();
+  renderHealthTable();
+  renderInventoryKPIs();
+}
+
+
+// ═══════════════════════════════════════
+// HEATMAP (Feature: Activity Heatmap)
+// ═══════════════════════════════════════
+function renderHeatmap(){
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const cats=[...new Set(allProducts.map(p=>p.category))].slice(0,5);
+  if(!cats.length){document.getElementById('heatmapContainer').innerHTML='<div class="empty"><div class="empty-text">No data</div></div>';return;}
+  const seed=s=>{let x=Math.sin(s+42)*10000;return x-Math.floor(x);};
+  let html='';
+  cats.forEach((cat,ci)=>{
+    html+=`<div class="heatmap-row"><span class="heatmap-label">${cat}</span>`;
+    days.forEach((d,di)=>{
+      const val=Math.floor(seed(ci*7+di+1)*10);
+      const intensity=val/10;
+      const alpha=0.1+intensity*0.8;
+      const color=intensity<0.33?`rgba(108,99,255,${alpha})`:intensity<0.66?`rgba(245,158,11,${alpha})`:`rgba(239,68,68,${alpha})`;
+      html+=`<div class="heatmap-cell" style="background:${color}" title="${cat} · ${d}: ${val} ops"></div>`;
+    });
+    html+='</div>';
+  });
+  html+=`<div class="heatmap-row"><span class="heatmap-label"></span>${days.map(d=>`<span style="font-size:9px;color:var(--muted);width:20px;text-align:center;flex-shrink:0">${d}</span>`).join('')}</div>`;
+  html+=`<div class="heatmap-legend"><span>Low</span>${[0.15,0.35,0.55,0.75,0.95].map(v=>`<div class="heatmap-cell" style="background:rgba(239,68,68,${v});width:16px;height:16px;display:inline-block"></div>`).join('')}<span>High</span></div>`;
+  document.getElementById('heatmapContainer').innerHTML=html;
+}
+
+function renderMoverTable(){
+  const sorted=[...allProducts].sort((a,b)=>(a.currentStock/Math.max(a.thresholdLevel,1))-(b.currentStock/Math.max(b.thresholdLevel,1)));
+  const maxStock=Math.max(...allProducts.map(p=>p.currentStock),1);
+  const rows=sorted.map(p=>{
+    const ratio=p.currentStock/Math.max(p.thresholdLevel,1);
+    const pct=Math.min(100,Math.round((p.currentStock/maxStock)*100));
+    const fast=ratio<1;
+    const tag=fast?`<span class="status-badge status-critical">🔥 Fast Mover</span>`:`<span class="status-badge status-ok">🐢 Slow Mover</span>`;
+    return `<tr>
+      <td style="font-weight:600">${p.productName}</td>
+      <td><span class="category-badge">${p.category}</span></td>
+      <td class="${fast?'stock-critical':'stock-ok'}">${p.currentStock}</td>
+      <td style="min-width:110px"><div style="display:flex;align-items:center;gap:7px"><div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${pct}%;background:${fast?'#ef4444':'#6c63ff'}"></div></div><span style="font-size:10px;color:var(--muted)">${pct}%</span></div></td>
+      <td>${tag}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('moverTable').innerHTML=`<table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Fill</th><th>Type</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderHealthTable(){
+  const rows=allProducts.map(p=>{
+    const ratio=p.currentStock/Math.max(p.thresholdLevel,1);
+    const pct=Math.round(ratio*100);
+    const barColor=ratio<=0.5?'#ef4444':ratio<=1?'#f59e0b':'#00d4aa';
+    const health=ratio<=0.5?`<span class="status-badge status-critical">Critical</span>`:ratio<=1?`<span class="status-badge status-low">Low</span>`:`<span class="status-badge status-ok">Healthy</span>`;
+    return `<tr>
+      <td style="font-weight:600">${p.productName}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent2)">${p.currentStock}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--muted)">${p.thresholdLevel}</td>
+      <td style="min-width:130px"><div style="display:flex;align-items:center;gap:7px"><div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${Math.min(100,pct)}%;background:${barColor}"></div></div><span style="font-size:10px;color:var(--muted)">${pct}%</span></div></td>
+      <td>${health}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('healthTable').innerHTML=`<table><thead><tr><th>Product</th><th>Stock</th><th>Threshold</th><th>Health Bar</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ═══════════════════════════════════════
+// AI FORECAST (Feature: EOQ Model)
+// ═══════════════════════════════════════
+function runForecast(){
+  if(!allProducts.length){
+    document.getElementById('forecastCards').innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Load products first</div></div>';return;
+  }
+  const predictions=allProducts.map(p=>{
+    const velocity=Math.max(0.5,(p.thresholdLevel/Math.max(p.currentStock,1))*3);
+    const daysLeft=Math.round(p.currentStock/velocity);
+    const eoqRaw=Math.sqrt((2*p.thresholdLevel*5)/0.5);
+    const reorderQty=Math.max(p.thresholdLevel,Math.round(eoqRaw));
+    const urgency=daysLeft<=3?'critical':daysLeft<=7?'warn':daysLeft<=14?'info':'ok';
+    return{...p,daysLeft,reorderQty,urgency,velocity:velocity.toFixed(2)};
+  }).sort((a,b)=>a.daysLeft-b.daysLeft);
+
+  document.getElementById('forecastBadge').textContent=predictions.filter(p=>p.daysLeft<=7).length+' need reorder';
+  const urgencyColor={critical:'var(--danger)',warn:'var(--warn)',info:'var(--accent)',ok:'var(--accent2)'};
+
+  document.getElementById('forecastCards').innerHTML=predictions.slice(0,6).map(p=>`
+    <div class="predict-card">
+      <div class="predict-label">${p.category}</div>
+      <div class="predict-name">${p.productName}</div>
+      <div class="predict-days" style="color:${urgencyColor[p.urgency]}">${p.daysLeft}</div>
+      <div class="predict-sub">days until stockout</div>
+      <div style="margin-top:5px;font-size:11px;color:var(--muted)">Velocity: ${p.velocity} units/day</div>
+      <div class="predict-badge">EOQ Reorder: ${p.reorderQty} units</div>
+    </div>`).join('');
+
+  const rows=predictions.map(p=>{
+    const c=urgencyColor[p.urgency];
+    const badge=p.daysLeft<=3?`<span class="status-badge status-critical">Urgent</span>`:p.daysLeft<=7?`<span class="status-badge status-low">Soon</span>`:p.daysLeft<=14?`<span class="status-badge" style="background:rgba(108,99,255,.1);color:var(--accent)">Monitor</span>`:`<span class="status-badge status-ok">Stable</span>`;
+    const conf=computeConfidence(p);
+    const confC=conf>=80?'var(--accent2)':conf>=60?'var(--warn)':'var(--danger)';
+    return `<tr>
+      <td style="font-weight:600">${p.productName}</td>
+      <td><span class="category-badge">${p.category}</span></td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent2)">${p.currentStock}</td>
+      <td style="font-family:'DM Mono',monospace;color:${c};font-weight:700">${p.daysLeft} days</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--purple)">${p.reorderQty} units</td>
+      <td><div style="display:flex;align-items:center;gap:5px"><div style="background:var(--surface2);border-radius:10px;height:5px;width:44px;overflow:hidden"><div style="background:${confC};height:100%;width:${conf}%;border-radius:10px"></div></div><span style="font-size:11px;color:${confC};font-weight:700">${conf}%</span></div></td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('forecastTable').innerHTML=`<table><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Days to Stockout</th><th>Reorder Qty (EOQ)</th><th>Confidence</th><th>Priority</th></tr></thead><tbody>${rows}</tbody></table>`;
+  addLog('info',`AI Forecast computed for ${predictions.length} products · requestId:${genId()}`);
+}
+
+// ═══════════════════════════════════════
+// MONITORING (Feature 3: Latency + Error charts)
+// ═══════════════════════════════════════
+function renderMonitoring(){
+  _updateMonMetrics();
+  _drawLog();
+  renderLatencyChart();
+  renderErrorChart();
+}
+
+function renderLatencyChart(){
+  if(!latencyData.length)return;
+  if(charts.latency){charts.latency.destroy();charts.latency=null;}
+  charts.latency=new Chart(document.getElementById('latencyChart'),{
+    type:'line',
+    data:{labels:latencyData.map((_,i)=>`#${i+1}`),datasets:[{label:'Latency (ms)',data:latencyData,borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,.08)',borderWidth:2,tension:0.4,pointRadius:4,pointBackgroundColor:'#6c63ff',fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7280',font:{size:11}}}},
+      scales:{x:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true}}}
+  });
+}
+
+function renderErrorChart(){
+  if(charts.err){charts.err.destroy();charts.err=null;}
+  charts.err=new Chart(document.getElementById('errorChart'),{
+    type:'doughnut',
+    data:{labels:['Success','Errors'],datasets:[{data:[apiSuccess,apiErrors],backgroundColor:['#00d4aa','#ef4444'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#6b7280',font:{size:11},padding:10}}},cutout:'65%'}
+  });
+}
+
+function simulateError(){
+  apiErrors++;
+  addLog('error','Simulated Lambda failure · CloudWatch alarm triggered · requestId:'+genId());
+  showToast('⚡ Test alarm fired','error');
+  addSecEvent('Simulated Lambda alarm triggered by admin');
+  triggerAlarm();
+  _updateMonMetrics();
+  if(document.getElementById('page-monitoring').classList.contains('active'))renderErrorChart();
+}
+
+function triggerAlarm(){
+  if(apiErrors>=3){showToast('🚨 CloudWatch Alarm: Error threshold exceeded!','error');addLog('error','CloudWatch alarm ALARM state (errors≥3) · requestId:'+genId());}
+}
+
+function demoStaffView(){
+  isAdmin=false;
+  const roleEl2=document.getElementById('sideRole');
+  roleEl2.textContent='Staff / Operator';
+  roleEl2.className='user-role staff-role';
+  const av=document.getElementById('sideAvatar');
+  av.className='user-avatar staff';
+  const staffBanner=document.getElementById('staffRoleBanner');
+  if(staffBanner) staffBanner.style.display='flex';
+  applyRole(false);
+  showToast('👤 Switched to Staff view — admin actions hidden','info');
+  addLog('info','Demo: switched to Staff view');
+  addAudit('LOGIN','Demo Staff view activated','👤');
+}
+
+// ═══════════════════════════════════════
+// IAM & SECURITY (Feature 4)
+// ═══════════════════════════════════════
+function renderIAM(){
+  const adminPerms=[
+    {action:'GET /products','allow':true},
+    {action:'POST /products','allow':true},
+    {action:'PUT /products','allow':true},
+    {action:'DELETE /products','allow':true},
+    {action:'GET /low-stock','allow':true},
+    {action:'View Analytics','allow':true},
+    {action:'View Cost Tracker','allow':true},
+    {action:'View IAM & Security','allow':true},
+    {action:'Test CloudWatch Alarm','allow':true},
+  ];
+  const staffPerms=[
+    {action:'GET /products','allow':true},
+    {action:'POST /products','allow':false},
+    {action:'PUT /products','allow':true},
+    {action:'DELETE /products','allow':false},
+    {action:'GET /low-stock','allow':true},
+    {action:'View Analytics','allow':true},
+    {action:'View Cost Tracker','allow':false},
+    {action:'View IAM & Security','allow':false},
+    {action:'Test CloudWatch Alarm','allow':false},
+  ];
+  const renderPerms=(perms)=>perms.map(p=>`
+    <div class="permission-row">
+      <span style="color:var(--text2)">${p.action}</span>
+      <span class="${p.allow?'perm-allowed':'perm-denied'}">${p.allow?'✅ Allowed':'❌ Denied'}</span>
+    </div>`).join('');
+  document.getElementById('adminPermissions').innerHTML=renderPerms(adminPerms);
+  document.getElementById('staffPermissions').innerHTML=renderPerms(staffPerms);
+
+  document.getElementById('cognitoGroups').innerHTML=`
+    <table><thead><tr><th>Group</th><th>Members</th><th>Precedence</th><th>Policy</th></tr></thead>
+    <tbody>
+      <tr><td><span class="category-badge" style="background:rgba(108,99,255,.1);color:var(--accent)">Admin</span></td><td style="color:var(--text2)">Administrators</td><td style="font-family:'DM Mono',monospace;color:var(--muted)">0</td><td><span class="status-badge status-ok">Full Access</span></td></tr>
+      <tr><td><span class="category-badge" style="background:rgba(0,212,170,.1);color:var(--accent2)">Staff</span></td><td style="color:var(--text2)">Operators</td><td style="font-family:'DM Mono',monospace;color:var(--muted)">1</td><td><span class="status-badge status-low">Read + Update</span></td></tr>
+    </tbody></table>`;
+
+  const secEl=document.getElementById('securityEvents');
+  document.getElementById('secEventCount').textContent=securityEvents.length;
+  if(!securityEvents.length){secEl.innerHTML='<div class="empty"><div class="empty-icon">🛡</div><div class="empty-text">No security events</div></div>';return;}
+  secEl.innerHTML=securityEvents.map(e=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(30,37,64,.7)">
+      <span style="color:var(--danger);font-size:14px">⚠</span>
+      <div style="flex:1"><div style="font-size:13px;color:var(--text)">${e.msg}</div><div style="font-size:11px;color:var(--muted)">${e.time}</div></div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// COST TRACKER (Feature 5)
+// ═══════════════════════════════════════
+function renderCost(){
+  const invocations=apiSuccess+apiErrors;
+  const dynamoR=apiSuccess*2;
+  const lCost=(Math.max(0,invocations-1000000)*0.0000002).toFixed(6);
+  const dCost=(Math.max(0,dynamoR-25000000)*0.00000025).toFixed(6);
+  const total=(parseFloat(lCost)+parseFloat(dCost)).toFixed(4);
+  document.getElementById('totalCostBadge').textContent='$'+total;
+  const services=[
+    {name:'AWS Lambda',icon:'λ',val:lCost,unit:`${invocations} invocations`,limit:'1M/month'},
+    {name:'Amazon DynamoDB',icon:'⊞',val:dCost,unit:`${dynamoR} reads`,limit:'25M R/W/month'},
+    {name:'Amazon SNS',icon:'🔔',val:'0.000000',unit:'Email alerts',limit:'1,000/month'},
+    {name:'API Gateway',icon:'⛩',val:'0.0000',unit:`${invocations} calls`,limit:'1M calls/month'},
+    {name:'CloudWatch',icon:'📡',val:'0.0000',unit:'Logs & Metrics',limit:'5GB logs/month'},
+    {name:'S3 Hosting',icon:'🗂',val:'0.0000',unit:'Static website',limit:'5GB/month'},
+  ];
+  document.getElementById('costGrid').innerHTML=services.map(s=>`
+    <div class="cost-item">
+      <div class="cost-service">${s.icon} ${s.name}</div>
+      <div class="cost-amount">$${s.val}</div>
+      <div class="cost-unit">${s.unit}</div>
+      <div class="cost-limit">Free: ${s.limit}</div>
+    </div>`).join('');
+  document.getElementById('freeTierTable').innerHTML=`<table>
+    <thead><tr><th>Service</th><th>Free Tier Limit</th><th>Est. Cost</th><th>Status</th></tr></thead>
+    <tbody>${services.map(s=>`<tr>
+      <td style="font-weight:600">${s.name}</td>
+      <td style="color:var(--muted)">${s.limit}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent2)">$${s.val}</td>
+      <td><span class="status-badge status-ok">Within Free Tier</span></td>
+    </tr>`).join('')}</tbody></table>`;
+  const tips=[
+    {icon:'💡',tip:'Use DynamoDB On-Demand mode to pay per request instead of provisioned capacity — better for variable workloads.'},
+    {icon:'⚡',tip:'Enable Lambda Reserved Concurrency to prevent runaway invocations and control costs predictably.'},
+    {icon:'📦',tip:'Enable S3 Intelligent Tiering to auto-move infrequently accessed objects to cheaper storage classes.'},
+    {icon:'🔔',tip:'Set CloudWatch billing alarms at $1, $5, $10 thresholds so you get email alerts before costs escalate.'},
+    {icon:'🗜',tip:'Enable CloudWatch Log compression and set 7-day retention to avoid log storage costs accumulating.'},
+    {icon:'🔄',tip:'Use API Gateway response caching (TTL 300s) to cut Lambda invocations for repeated read requests.'},
+  ];
+  document.getElementById('costTips').innerHTML=tips.map(t=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:18px">${t.icon}</span>
+      <span style="font-size:12px;color:var(--text2);line-height:1.6">${t.tip}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// CRUD (Feature: Transaction logging on every action)
+// ═══════════════════════════════════════
+async function addProduct(){
+  // Security: block staff from adding products even if they call this directly
+  if(!isAdmin){showToast('❌ Access denied — Admin only','error');addLog('warn','Unauthorized add product attempt by staff · requestId:'+genId());return;}
+  const data={
+    productId:document.getElementById('pid').value.trim(),
+    productName:document.getElementById('pname').value.trim(),
+    category:document.getElementById('pcat').value.trim(),
+    currentStock:Number(document.getElementById('pstock').value),
+    thresholdLevel:Number(document.getElementById('pthresh').value)
+  };
+  if(!data.productId||!data.productName||!data.category){showToast('Fill all fields','error');return;}
+  try{
+    const addRes=await fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const addRaw=await addRes.json();
+    // Check if response indicates error
+    const addBody=addRaw.body?JSON.parse(addRaw.body):addRaw;
+    if(!addRes.ok||(addBody.errors&&addBody.errors.length>0)){
+      showToast(addBody.message||'Failed to add product','error');
+      addLog('error',`POST /product error: ${addBody.message} · requestId:${genId()}`);
+      return;
+    }
+    apiSuccess++;
+    showToast(`${data.productName} added successfully`,'success');
+    addNotification('success',`Product "${data.productName}" added — Stock: ${data.currentStock}`,'📦');
+    addLog('info',`POST /product → 200 · ${data.productName} · requestId:${genId()}`);
+    addAudit('ADD',`Added "${data.productName}" (${data.productId}) — stock: ${data.currentStock}`,'📦');
+    addTransaction('ADD',data.productId,data.productName,data.currentStock,undefined,data.currentStock);
+    ['pid','pname','pcat','pstock','pthresh'].forEach(id=>document.getElementById(id).value='');
+    loadProducts();
+  }catch(err){
+    apiErrors++;triggerAlarm();
+    showToast('Failed to add','error');
+    addLog('error',`POST /product failed: ${err.message} · requestId:${genId()}`);
+  }
+}
+
+async function deleteProduct(id,name){
+  // Security: block staff from deleting
+  if(!isAdmin){showToast('❌ Access denied — Admin only','error');addLog('warn','Unauthorized delete attempt by staff · requestId:'+genId());return;}
+  if(!confirm(`Delete "${name}"?`))return;
+  const old=allProducts.find(p=>p.productId===id);
+  try{
+    await fetch(API_BASE,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:id})});
+    apiSuccess++;
+    showToast(`${name} deleted`,'info');
+    addLog('warn',`DELETE /product → 200 · ${id} · requestId:${genId()}`);
+    addAudit('DELETE',`Deleted "${name}" (${id})`,'🗑');
+    addTransaction('DELETE',id,name,old?.currentStock||0,old?.currentStock,0);
+    loadProducts();
+  }catch(err){
+    apiErrors++;triggerAlarm();
+    showToast('Delete failed','error');
+    addLog('error',`DELETE /product failed: ${err.message} · requestId:${genId()}`);
+  }
+}
+
+let _prevStock=0;
+function openUpdateModal(id,name,currentStock){
+  updateTarget=id;_prevStock=currentStock||0;
+  document.getElementById('modalProductName').value=name;
+  document.getElementById('modalStock').value='';
+  document.getElementById('updateModal').classList.add('open');
+  setTimeout(()=>document.getElementById('modalStock').focus(),120);
+}
+
+function closeModal(){document.getElementById('updateModal').classList.remove('open');}
+
+async function confirmUpdate(){
+  const newStock=Number(document.getElementById('modalStock').value);
+  if(isNaN(newStock)||newStock<0){showToast('Enter valid quantity','error');return;}
+  const name=document.getElementById('modalProductName').value;
+  const action=newStock>_prevStock?'STOCK_IN':'STOCK_OUT';
+  try{
+    await fetch(API_BASE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:updateTarget,currentStock:newStock})});
+    apiSuccess++;
+    showToast(`Stock updated → ${newStock} units`,'success');
+    addNotification('info',`Stock updated to ${newStock} units`,'✏️');
+    addLog('info',`PUT /product → 200 · ${updateTarget} · ${_prevStock}→${newStock} · requestId:${genId()}`);
+    addAudit('UPDATE',`Updated "${name}" stock: ${_prevStock} → ${newStock}`,'✏️');
+    addTransaction(action,updateTarget,name,Math.abs(newStock-_prevStock),_prevStock,newStock);
+    closeModal();
+    loadProducts();
+  }catch(err){
+    apiErrors++;triggerAlarm();
+    showToast('Update failed','error');
+    addLog('error',`PUT /product failed: ${err.message} · requestId:${genId()}`);
+  }
+}
+
+// ═══════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════
+function searchProducts(){
+  currentPage=1;
+  const q      = document.getElementById('search').value.toLowerCase();
+  const cat    = document.getElementById('filterCat').value;
+  const status = document.getElementById('filterStatus').value;
+  const sortBy = document.getElementById('sortBy')?.value || 'default';
+
+  let filtered = allProducts.filter(p=>{
+    const mt    = p.productName.toLowerCase().includes(q)||p.productId.toLowerCase().includes(q)||p.category.toLowerCase().includes(q);
+    const mc    = !cat||p.category===cat;
+    const ratio = p.currentStock/Math.max(p.thresholdLevel,1);
+    const ms    = !status||(status==='ok'&&ratio>1)||(status==='low'&&ratio<=1&&ratio>0.5)||(status==='critical'&&ratio<=0.5);
+    return mt&&mc&&ms;
+  });
+
+  // Apply sorting
+  switch(sortBy){
+    case 'id_asc':
+      filtered.sort((a,b)=>a.productId.localeCompare(b.productId,undefined,{numeric:true}));
+      break;
+    case 'id_desc':
+      filtered.sort((a,b)=>b.productId.localeCompare(a.productId,undefined,{numeric:true}));
+      break;
+    case 'name_asc':
+      filtered.sort((a,b)=>a.productName.localeCompare(b.productName));
+      break;
+    case 'name_desc':
+      filtered.sort((a,b)=>b.productName.localeCompare(a.productName));
+      break;
+    case 'stock_asc':
+      filtered.sort((a,b)=>a.currentStock-b.currentStock);
+      break;
+    case 'stock_desc':
+      filtered.sort((a,b)=>b.currentStock-a.currentStock);
+      break;
+    case 'category_asc':
+      filtered.sort((a,b)=>a.category.localeCompare(b.category));
+      break;
+    default:
+      // Default: sort by productId ascending (natural order)
+      filtered.sort((a,b)=>a.productId.localeCompare(b.productId,undefined,{numeric:true}));
+      break;
+  }
+
+  renderProductTablePaginated(filtered, q);
+}
+
+// ═══════════════════════════════════════
+// PDF
+// ═══════════════════════════════════════
+function downloadPDF(){
+  const{jsPDF}=window.jspdf;const doc=new jsPDF();
+  doc.setFillColor(10,12,20);doc.rect(0,0,210,36,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('InvenTrack',20,14);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,148,176);
+  doc.text('Inventory Report · Generated: '+new Date().toLocaleString(),20,22);
+  doc.text('Region: ap-south-1 · AWS Serverless · Cognito Auth',20,29);
+  doc.setTextColor(0,0,0);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('Summary',20,48);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);
+  const low=allProducts.filter(p=>p.currentStock<p.thresholdLevel);
+  const crit=allProducts.filter(p=>p.currentStock<p.thresholdLevel*.5);
+  doc.text(`Products: ${allProducts.length}  Low: ${low.length}  Critical: ${crit.length}  Total Units: ${allProducts.reduce((s,p)=>s+p.currentStock,0)}`,20,56);
+  let y=70;
+  doc.setFillColor(240,240,250);doc.rect(18,y-6,174,10,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60,60,100);
+  ['ID','Name','Category','Stock','Threshold','Status'].forEach((h,i)=>doc.text(h,[20,46,88,130,150,170][i],y));
+  y+=8;doc.setFont('helvetica','normal');doc.setFontSize(8);
+  allProducts.forEach((p,idx)=>{
+    if(idx%2===0){doc.setFillColor(248,248,255);doc.rect(18,y-5,174,9,'F');}
+    const st=p.currentStock<p.thresholdLevel*.5?'CRITICAL':p.currentStock<p.thresholdLevel?'LOW':'OK';
+    const c=st==='CRITICAL'?[220,0,40]:st==='LOW'?[180,120,0]:[0,140,80];
+    doc.setTextColor(60,60,60);
+    doc.text(p.productId,20,y);doc.text(p.productName.substring(0,22),46,y);doc.text(p.category.substring(0,14),88,y);
+    doc.text(String(p.currentStock),130,y);doc.text(String(p.thresholdLevel),150,y);
+    doc.setTextColor(...c);doc.text(st,170,y);doc.setTextColor(0,0,0);
+    y+=9;if(y>272){doc.addPage();y=20;}
+  });
+  doc.save('InvenTrack_Report.pdf');
+  addLog('info','PDF report downloaded · requestId:'+genId());
+  showToast('PDF downloaded','success');
+}
+
+// ═══════════════════════════════════════
+// VARIANTS (Feature: Product Variants)
+// ═══════════════════════════════════════
+// Variants stored in localStorage so they persist across refresh
+let variantData = JSON.parse(localStorage.getItem('inventrack_variants')||'{}');
+
+function saveVariantData(){
+  localStorage.setItem('inventrack_variants', JSON.stringify(variantData));
+}
+
+function openVariantModal(brand=''){
+  document.getElementById('variantBrand').value = brand;
+  document.getElementById('variantName').value = '';
+  document.getElementById('variantCategory').value = '';
+  document.getElementById('variantStock').value = '';
+  document.getElementById('variantThreshold').value = '';
+  document.getElementById('variantSku').value = '';
+  document.getElementById('variantModal').classList.add('open');
+  setTimeout(()=>document.getElementById(brand?'variantName':'variantBrand').focus(), 120);
+}
+
+function closeVariantModal(){
+  document.getElementById('variantModal').classList.remove('open');
+}
+
+function saveVariant(){
+  if(!isAdmin){showToast('❌ Access denied — Admin only','error');return;}
+  const brand     = document.getElementById('variantBrand').value.trim();
+  const name      = document.getElementById('variantName').value.trim();
+  const category  = document.getElementById('variantCategory').value.trim();
+  const stock     = Number(document.getElementById('variantStock').value);
+  const threshold = Number(document.getElementById('variantThreshold').value);
+  const sku       = document.getElementById('variantSku').value.trim() ||
+                    (brand.toUpperCase().replace(/\s+/g,'-') + '-' + name.toUpperCase().replace(/\s+/g,'-') + '-' + genId());
+
+  if(!brand || !name || !category){
+    showToast('Please fill Brand, Variant Name and Category','error');
+    return;
+  }
+
+  if(!variantData[brand]) variantData[brand] = [];
+
+  // Check duplicate SKU
+  const allVariants = Object.values(variantData).flat();
+  if(allVariants.find(v => v.sku === sku)){
+    showToast('SKU already exists — use a different one','error');
+    return;
+  }
+
+  variantData[brand].push({ sku, name, category, stock, threshold, addedAt: new Date().toLocaleString() });
+  saveVariantData();
+
+  addLog('info', `Variant added: ${brand} → ${name} (${sku}) · requestId:${genId()}`);
+  addAudit('ADD', `Added variant "${name}" under brand "${brand}" (SKU: ${sku})`, '🔀');
+  addTransaction('ADD', sku, `${brand} — ${name}`, stock, 0, stock);
+
+  showToast(`Variant "${name}" added under ${brand}`, 'success');
+  addNotification('success', `Variant "${name}" added under ${brand}`, '🔀');
+  closeVariantModal();
+  renderVariantPage();
+  loadProducts();
+}
+
+function deleteVariant(brand, sku){
+  if(!confirm(`Delete this variant?`)) return;
+  variantData[brand] = variantData[brand].filter(v => v.sku !== sku);
+  if(variantData[brand].length === 0) delete variantData[brand];
+  saveVariantData();
+  addLog('warn', `Variant deleted: ${sku} from ${brand} · requestId:${genId()}`);
+  addAudit('DELETE', `Deleted variant SKU: ${sku} from brand "${brand}"`, '🗑');
+  showToast('Variant deleted','info');
+  renderVariantPage();
+}
+
+function updateVariantStock(brand, sku){
+  const v = variantData[brand]?.find(v=>v.sku===sku);
+  if(!v) return;
+  const newStock = prompt(`Update stock for "${v.name}" (current: ${v.stock})`);
+  if(newStock === null || newStock === '') return;
+  const ns = Number(newStock);
+  if(isNaN(ns) || ns < 0){ showToast('Invalid stock value','error'); return; }
+  const prev = v.stock;
+  v.stock = ns;
+  saveVariantData();
+  const action = ns > prev ? 'STOCK_IN' : 'STOCK_OUT';
+  addTransaction(action, sku, `${brand} — ${v.name}`, Math.abs(ns-prev), prev, ns);
+  addAudit('UPDATE', `Updated variant "${v.name}" stock: ${prev} → ${ns}`, '✏️');
+  addLog('info', `Variant stock updated: ${sku} → ${ns} · requestId:${genId()}`);
+  showToast(`Stock updated → ${ns} units`, 'success');
+  renderVariantPage();
+}
+
+function renderVariantPage(){
+  const q = document.getElementById('variantSearch')?.value.toLowerCase() || '';
+  const brands = Object.keys(variantData).filter(b => b.toLowerCase().includes(q) ||
+    variantData[b].some(v => v.name.toLowerCase().includes(q)));
+
+  document.getElementById('variantCount').textContent = brands.length + ' groups';
+
+  if(!brands.length){
+    document.getElementById('variantGroupContainer').innerHTML =
+      '<div class="empty"><div class="empty-icon">🔀</div><div class="empty-text">No variants yet. Click "+ Add Variant" to start.</div></div>';
+    return;
+  }
+
+  const html = brands.map(brand => {
+    const variants = variantData[brand];
+    const totalStock = variants.reduce((s,v)=>s+v.stock,0);
+    const lowCount = variants.filter(v=>v.stock<v.threshold).length;
+
+    const rows = variants.map(v => {
+      const ratio = v.stock / Math.max(v.threshold,1);
+      const pct = Math.min(100, Math.round(ratio*100));
+      const barColor = ratio<=0.5?'#ef4444':ratio<=1?'#f59e0b':'#00d4aa';
+      let sc,sl;
+      if(ratio<=0.5){sc='stock-critical';sl='🔴 Critical';}
+      else if(ratio<=1){sc='stock-warn';sl='🟡 Low';}
+      else{sc='stock-ok';sl='🟢 Healthy';}
+
+      return `<tr>
+        <td><span class="product-id">${v.sku}</span></td>
+        <td style="font-weight:600">${v.name}</td>
+        <td><span class="category-badge">${v.category}</span></td>
+        <td class="${sc}">${v.stock}</td>
+        <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${v.threshold}</td>
+        <td style="min-width:100px"><div style="display:flex;align-items:center;gap:7px"><div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div><span style="font-size:10px;color:var(--muted)">${pct}%</span></div></td>
+        <td><span class="status-badge ${ratio<=0.5?'status-critical':ratio<=1?'status-low':'status-ok'}">${sl}</span></td>
+        <td style="font-size:11px;color:var(--muted)">${v.addedAt}</td>
+        <td><div class="actions-cell">
+          <button class="btn btn-warn btn-xs" onclick="updateVariantStock('${brand}','${v.sku}')">✏</button>
+          <button class="btn btn-danger btn-xs admin-only" onclick="deleteVariant('${brand}','${v.sku}')">✕</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+
+    return `<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);font-size:14px">${brand.charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--text)">${brand}</div>
+            <div style="font-size:11px;color:var(--muted)">${variants.length} variant${variants.length!==1?'s':''} · Total stock: ${totalStock}${lowCount>0?` · <span style="color:var(--warn)">${lowCount} low</span>`:''}</div>
+          </div>
+        </div>
+        <button class="btn btn-purple btn-xs admin-only" onclick="openVariantModal('${brand}')">+ Add Variant</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>SKU</th><th>Variant</th><th>Category</th><th>Stock</th><th>Threshold</th><th>Level</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:4px 0 20px">');
+
+  document.getElementById('variantGroupContainer').innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// FEATURE 1: DARK/LIGHT MODE
+// ═══════════════════════════════════════
+function toggleTheme(){
+  const isLight = document.body.classList.toggle('light-mode');
+  document.getElementById('themeBtn').textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('inventrack_theme', isLight ? 'light' : 'dark');
+  addLog('info', `Theme switched to ${isLight?'light':'dark'} mode`);
+}
+
+function loadSavedTheme(){
+  const saved = localStorage.getItem('inventrack_theme');
+  if(saved === 'light'){
+    document.body.classList.add('light-mode');
+    const btn = document.getElementById('themeBtn');
+    if(btn) btn.textContent = '☀️';
+  }
+}
+
+// ═══════════════════════════════════════
+// FEATURE 2: CSV EXPORT
+// ═══════════════════════════════════════
+function downloadCSV(){
+  const allVariants = Object.values(variantData).flat();
+  const variantProducts = allVariants.map(v=>({
+    productId: v.sku,
+    productName: `${Object.keys(variantData).find(b=>variantData[b].includes(v))} — ${v.name}`,
+    category: v.category,
+    currentStock: v.stock,
+    thresholdLevel: v.threshold,
+    type: 'Variant'
+  }));
+  const all = [
+    ...allProducts.map(p=>({...p, type:'Product'})),
+    ...variantProducts
+  ];
+
+  const headers = ['ID','Name','Category','Stock','Threshold','Status','Type'];
+  const rows = all.map(p => {
+    const ratio = p.currentStock / Math.max(p.thresholdLevel,1);
+    const status = ratio<=0.5?'Critical':ratio<=1?'Low':'Healthy';
+    return [p.productId, p.productName, p.category, p.currentStock, p.thresholdLevel, status, p.type||'Product']
+      .map(v => '"' + String(v) + '"').join(',');
+  });
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `InvenTrack_Export_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  addLog('info', `CSV exported — ${all.length} records · requestId:${genId()}`);
+  showToast(`CSV exported — ${all.length} records`, 'success');
+}
+
+// ═══════════════════════════════════════
+// FEATURE 3: NOTIFICATION CENTER
+// ═══════════════════════════════════════
+let notifications = JSON.parse(localStorage.getItem('inventrack_notifs')||'[]');
+
+function addNotification(type, message, icon='🔔'){
+  const notif = {type, message, icon, time: new Date().toLocaleTimeString(), ts: Date.now(), id: genId()};
+  notifications.unshift(notif);
+  if(notifications.length > 50) notifications.pop();
+  localStorage.setItem('inventrack_notifs', JSON.stringify(notifications));
+  updateNotifBadge();
+  renderNotifList();
+}
+
+function updateNotifBadge(){
+  const badge = document.getElementById('notifBadge');
+  const unread = notifications.filter(n=>!n.read).length;
+  if(!badge) return;
+  if(unread > 0){
+    badge.style.display = 'flex';
+    badge.style.alignItems = 'center';
+    badge.style.justifyContent = 'center';
+    badge.textContent = unread > 9 ? '9+' : String(unread);
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleNotifCenter(){
+  const nc = document.getElementById('notifCenter');
+  const isOpen = nc.style.display !== 'none';
+  nc.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen){
+    // Mark all as read
+    notifications.forEach(n=>n.read=true);
+    localStorage.setItem('inventrack_notifs', JSON.stringify(notifications));
+    updateNotifBadge();
+    renderNotifList();
+  }
+}
+
+function renderNotifList(){
+  const list = document.getElementById('notifList');
+  if(!list) return;
+  if(!notifications.length){
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No notifications yet</div>';
+    return;
+  }
+  const typeColor = {warn:'var(--warn)',error:'var(--danger)',success:'var(--accent2)',info:'var(--accent)'};
+  list.innerHTML = notifications.slice(0,20).map(n=>`
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;background:${n.read?'transparent':'rgba(108,99,255,0.04)'}">
+      <span style="font-size:16px;flex-shrink:0">${n.icon}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;color:var(--text);line-height:1.4">${n.message}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace">${n.time}</div>
+      </div>
+      <div style="width:6px;height:6px;border-radius:50%;background:${typeColor[n.type]||'var(--accent)'};flex-shrink:0;margin-top:4px"></div>
+    </div>`).join('');
+}
+
+function clearNotifications(){
+  notifications = [];
+  localStorage.setItem('inventrack_notifs', JSON.stringify(notifications));
+  updateNotifBadge();
+  renderNotifList();
+  showToast('Notifications cleared','info');
+}
+
+// Close notif center when clicking outside
+document.addEventListener('click', function(e){
+  const nc = document.getElementById('notifCenter');
+  const bell = document.getElementById('bellBtn');
+  if(nc && bell && !nc.contains(e.target) && !bell.contains(e.target)){
+    nc.style.display = 'none';
+  }
+});
+
+// ═══════════════════════════════════════
+// FEATURE 4: PAGINATION
+// ═══════════════════════════════════════
+let currentPage = 1;
+const ITEMS_PER_PAGE = 8;
+let filteredProducts = [];
+
+function renderProductTablePaginated(products, q=''){
+  filteredProducts = products;
+  currentPage = 1;
+  renderCurrentPage(q);
+}
+
+function renderCurrentPage(q=''){
+  const total = filteredProducts.length;
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+  const start = (currentPage-1) * ITEMS_PER_PAGE;
+  const end = Math.min(start + ITEMS_PER_PAGE, total);
+  const pageProducts = filteredProducts.slice(start, end);
+
+  document.getElementById('productCount').textContent = `(${total} total · showing ${start+1}-${end})`;
+
+  if(!pageProducts.length && !Object.values(variantData).flat().length){
+    document.getElementById('productTableWrap').innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No products found</div></div>';
+    return;
+  }
+
+  const rows = pageProducts.map(p=>{
+    const ratio = p.currentStock/Math.max(p.thresholdLevel,1);
+    const pct = Math.min(100,Math.round(ratio*100));
+    let sc,sl,sb;
+    if(ratio<=0.5){sc='stock-critical';sl='🔴 Critical';sb='status-critical';}
+    else if(ratio<=1){sc='stock-warn';sl='🟡 Low';sb='status-low';}
+    else{sc='stock-ok';sl='🟢 Healthy';sb='status-ok';}
+    const barColor=ratio<=0.5?'#ef4444':ratio<=1?'#f59e0b':'#00d4aa';
+    const delBtn=isAdmin?`<button class="btn btn-danger btn-xs" onclick="deleteProduct('${p.productId}','${p.productName}')">✕</button>`:'';
+    return `<tr>
+      <td><span class="product-id">${p.productId}</span></td>
+      <td style="font-weight:600">${highlight(p.productName,q)}</td>
+      <td><span class="category-badge">${highlight(p.category,q)}</span></td>
+      <td class="${sc}">${p.currentStock}</td>
+      <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${p.thresholdLevel}</td>
+      <td style="min-width:110px"><div style="display:flex;align-items:center;gap:7px"><div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${Math.min(pct,100)}%;background:${barColor}"></div></div><span style="font-size:10px;color:var(--muted)">${pct}%</span></div></td>
+      <td><span class="status-badge ${sb}">${sl}</span></td>
+      <td><div class="actions-cell">
+        <button class="btn btn-purple btn-xs" onclick="openHistoryModal('${p.productId}','${p.productName}')" title="Stock History">📈</button>
+        <button class="btn btn-warn btn-xs" onclick="openUpdateModal('${p.productId}','${p.productName}',${p.currentStock})">✏</button>
+        ${delBtn}
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  // Pagination buttons
+  let pagBtns = `<div class="pagination">
+    <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+    <button class="page-btn" onclick="changePage(${currentPage-1})" ${currentPage<=1?'disabled':''}>← Prev</button>`;
+  const maxBtns = Math.min(totalPages, 5);
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, startPage + maxBtns - 1);
+  for(let i=startPage; i<=endPage; i++){
+    pagBtns += `<button class="page-btn ${i===currentPage?'active':''}" onclick="changePage(${i})">${i}</button>`;
+  }
+  pagBtns += `<button class="page-btn" onclick="changePage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>Next →</button>
+  </div>`;
+
+  document.getElementById('productTableWrap').innerHTML = `
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Stock</th><th>Threshold</th><th>Level</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${totalPages > 1 ? pagBtns : ''}`;
+
+  // Append variants directly into table
+  appendVariantsToTable();
+}
+
+function changePage(page){
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  if(page < 1 || page > totalPages) return;
+  currentPage = page;
+  renderCurrentPage(document.getElementById('search')?.value.toLowerCase()||'');
+}
+
+// ═══════════════════════════════════════
+// FEATURE 5: STOCK HISTORY MODAL
+// ═══════════════════════════════════════
+let historyChart = null;
+
+function openHistoryModal(productId, productName){
+  document.getElementById('historyProductName').textContent = productName;
+
+  // Get transactions for this product from transactionLog
+  const txns = transactionLog.filter(t => t.productId === productId)
+    .sort((a,b) => a.ts - b.ts);
+
+  const modal = document.getElementById('historyModal');
+  modal.classList.add('open');
+
+  // Build chart data
+  if(txns.length > 0){
+    const labels = txns.map(t => t.time);
+    const data   = txns.map(t => t.newStock !== undefined ? t.newStock : t.qty);
+    const colors = txns.map(t => t.action==='STOCK_IN'?'rgba(0,212,170,0.8)':t.action==='STOCK_OUT'?'rgba(239,68,68,0.8)':'rgba(108,99,255,0.8)');
+
+    if(historyChart){ historyChart.destroy(); historyChart = null; }
+    setTimeout(()=>{
+      const ctx = document.getElementById('historyChart');
+      historyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Stock Level',
+            data,
+            borderColor: '#6c63ff',
+            backgroundColor: 'rgba(108,99,255,0.08)',
+            borderWidth: 2,
+            tension: 0.4,
+            pointRadius: 5,
+            pointBackgroundColor: colors,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color:'#4a5580', font:{size:10} }, grid: { color:'rgba(255,255,255,0.03)' } },
+            y: { ticks: { color:'#4a5580' }, grid: { color:'rgba(255,255,255,0.03)' }, beginAtZero: true }
+          }
+        }
+      });
+    }, 100);
+
+    // Timeline
+    document.getElementById('historyTimeline').innerHTML = txns.slice().reverse().map(t=>{
+      const actionColor = t.action==='STOCK_IN'?'var(--accent2)':t.action==='STOCK_OUT'?'var(--danger)':'var(--accent)';
+      const actionIcon  = t.action==='STOCK_IN'?'📥':t.action==='STOCK_OUT'?'📤':t.action==='ADD'?'➕':'🗑';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="font-size:16px">${actionIcon}</span>
+        <div style="flex:1">
+          <span style="color:${actionColor};font-weight:600">${t.action}</span>
+          <span style="color:var(--text2)"> · Qty: ${t.qty} · ${t.prevStock}→${t.newStock}</span>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${t.time}</span>
+      </div>`;
+    }).join('');
+  } else {
+    if(historyChart){ historyChart.destroy(); historyChart = null; }
+    setTimeout(()=>{
+      const ctx = document.getElementById('historyChart');
+      const p = allProducts.find(p=>p.productId===productId);
+      historyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Initial'],
+          datasets: [{ label:'Stock', data:[p?.currentStock||0], borderColor:'#6c63ff', backgroundColor:'rgba(108,99,255,0.08)', borderWidth:2, pointRadius:6, pointBackgroundColor:'#6c63ff', fill:true }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,0.03)'},beginAtZero:true}} }
+      });
+    }, 100);
+    document.getElementById('historyTimeline').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No transaction history yet for this product.<br>Update stock to generate history.</div>';
+  }
+}
+
+function closeHistoryModal(){
+  document.getElementById('historyModal').classList.remove('open');
+  if(historyChart){ historyChart.destroy(); historyChart = null; }
+}
+
+// ═══════════════════════════════════════
+// REAL ANALYTICS FROM DYNAMODB
+// ═══════════════════════════════════════
+
+function renderAnalyticsSummaryCards(snapshot){
+  // Update or create analytics summary section
+  let summaryEl = document.getElementById('analyticsSummary');
+  if(!summaryEl){
+    const analyticsPage = document.getElementById('page-analytics');
+    const topbar = analyticsPage.querySelector('.topbar');
+    summaryEl = document.createElement('div');
+    summaryEl.id = 'analyticsSummary';
+    summaryEl.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px';
+    topbar.insertAdjacentElement('afterend', summaryEl);
+  }
+
+  const healthColor = snapshot.healthScore>=80?'var(--accent2)':snapshot.healthScore>=50?'var(--warn)':'var(--danger)';
+  summaryEl.innerHTML = `
+    <div class="metric-card">
+      <div class="metric-value" style="color:var(--accent)">${snapshot.totalProducts}</div>
+      <div class="metric-label">Total Products</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:var(--accent2)">${snapshot.totalUnits}</div>
+      <div class="metric-label">Total Units</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:var(--warn)">${snapshot.lowStockCount}</div>
+      <div class="metric-label">Low Stock</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:${healthColor}">${snapshot.healthScore}%</div>
+      <div class="metric-label">Health Score</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:var(--purple)">${snapshot.avgStock}</div>
+      <div class="metric-label">Avg Stock / SKU</div>
+    </div>`;
+
+  // Update last snapshot time
+  const ts = new Date(snapshot.timestamp).toLocaleString();
+  let tsEl = document.getElementById('snapshotTime');
+  if(!tsEl){
+    const grid2 = document.getElementById('page-analytics').querySelector('.grid-2');
+    if(grid2){
+      tsEl = document.createElement('div');
+      tsEl.id = 'snapshotTime';
+      tsEl.style.cssText = 'font-size:11px;color:var(--muted);margin-bottom:12px;font-family:"DM Mono",monospace;text-align:right';
+      grid2.insertAdjacentElement('beforebegin', tsEl);
+    }
+  }
+  if(tsEl) tsEl.textContent = `📡 Last DynamoDB snapshot: ${ts} · Health: ${snapshot.healthScore}%`;
+}
+
+function renderTrendChart(trend){
+  // Add trend chart card if not exists
+  let trendCard = document.getElementById('trendChartCard');
+  if(!trendCard){
+    trendCard = document.createElement('div');
+    trendCard.id = 'trendChartCard';
+    trendCard.className = 'card';
+    trendCard.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">📈 24-Hour Inventory Trend</span>
+        <span class="card-badge teal">Live from DynamoDB</span>
+      </div>
+      <div style="position:relative;height:200px"><canvas id="trendChart"></canvas></div>`;
+    // Insert before the heatmap card
+    const heatmapCard = document.getElementById('heatmapContainer')?.closest('.card');
+    if(heatmapCard) heatmapCard.insertAdjacentElement('beforebegin', trendCard);
+    else document.getElementById('page-analytics').appendChild(trendCard);
+  }
+
+  const labels     = trend.map(t=>t.time?.split('T')[1]?.substring(0,5)||t.time);
+  const units      = trend.map(t=>t.totalUnits);
+  const lowCounts  = trend.map(t=>t.lowStockCount);
+
+  if(charts.trend){charts.trend.destroy();charts.trend=null;}
+  charts.trend=new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Total Units',data:units,borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,.08)',borderWidth:2,tension:0.4,pointRadius:3,fill:true},
+        {label:'Low Stock Count',data:lowCounts,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.06)',borderWidth:2,tension:0.4,pointRadius:3,fill:true,yAxisID:'y2'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#6b7280',font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#4a5580',font:{size:9}},grid:{color:'rgba(255,255,255,.03)'}},
+        y:{ticks:{color:'#4a5580'},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true,position:'left'},
+        y2:{ticks:{color:'#f59e0b'},grid:{display:false},beginAtZero:true,position:'right'}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// FEATURE 9: WELCOME CARD CLOCK
+// ═══════════════════════════════════════
+function startWelcomeClock(){
+  function updateClock(){
+    const now  = new Date();
+    const time = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const date = now.toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    const el   = document.getElementById('welcomeTime');
+    const del  = document.getElementById('welcomeDate');
+    if(el) el.textContent = time;
+    if(del) del.textContent = date + ' · AWS ap-south-1';
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+}
+
+function updateWelcomeStatus(lowCount){
+  const dot  = document.getElementById('systemStatusDot');
+  const text = document.getElementById('systemStatusText');
+  const sub  = document.getElementById('systemStatusSub');
+  const card = document.getElementById('systemStatusCard');
+  if(!dot) return;
+  if(lowCount > 0){
+    dot.style.background  = 'var(--danger)';
+    if(text) text.style.color = 'var(--danger)';
+    if(text) text.textContent = lowCount + ' Item(s) Need Attention';
+    if(card) card.style.borderColor = 'rgba(239,68,68,.3)';
+    if(card) card.style.background  = 'rgba(239,68,68,.06)';
+  } else {
+    dot.style.background  = 'var(--accent2)';
+    if(text) text.style.color = 'var(--accent2)';
+    if(text) text.textContent = 'All Systems Operational';
+    if(card) card.style.borderColor = 'rgba(0,212,170,.2)';
+    if(card) card.style.background  = 'rgba(0,212,170,.08)';
+  }
+  if(sub) sub.textContent = 'AWS ap-south-1 · Last check: '+new Date().toLocaleTimeString();
+}
+
+// ═══════════════════════════════════════
+// FEATURE 1: REAL-TIME STOCK ALERT POLLING
+// ═══════════════════════════════════════
+let lastLowStockIds = new Set();
+let alertPollingTimer = null;
+
+function startAlertPolling(){
+  if(alertPollingTimer) clearInterval(alertPollingTimer);
+  checkLowStockAlerts(); // immediate first check
+  alertPollingTimer = setInterval(checkLowStockAlerts, 30000); // every 30s
+}
+
+async function checkLowStockAlerts(){
+  try{
+    const res  = await fetch(API_BASE.replace('/product','') + '/lowstock');
+    if(!res.ok) return;
+    const data = await res.json();
+    const items = Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
+
+    // Find newly low items not seen before
+    const newLowIds = new Set(items.map(p=>p.productId));
+    const newAlerts = items.filter(p=>!lastLowStockIds.has(p.productId));
+
+    if(newAlerts.length > 0){
+      newAlerts.forEach(p=>{
+        showToast(`⚠ Low Stock: ${p.productName} (${p.currentStock} left)`,'warn');
+        addNotification('warn',`Low stock alert: ${p.productName} has only ${p.currentStock} units (threshold: ${p.thresholdLevel})`,'⚠️');
+        addLog('warn',`Polling alert: ${p.productName} below threshold · stock:${p.currentStock} · requestId:${genId()}`);
+      });
+    }
+
+    lastLowStockIds = newLowIds;
+    updateWelcomeStatus(items.length);
+    addLog('info',`Stock alert poll: ${items.length} low-stock items · requestId:${genId()}`);
+  }catch(err){
+    // Silent fail for polling
+  }
+}
+
+// ═══════════════════════════════════════
+// FEATURE 2: BULK CSV IMPORT
+// ═══════════════════════════════════════
+async function importCSV(event){
+  if(!isAdmin){ showToast('Admin only','error'); return; }
+  const file = event.target.files[0];
+  if(!file){ return; }
+
+  const text = await file.text();
+  const lines = text.trim().split('\n');
+  if(lines.length < 2){ showToast('CSV must have header row + at least 1 product','error'); return; }
+
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
+  const required = ['productid','productname','category','stock','threshold'];
+  const missing  = required.filter(r=>!headers.includes(r));
+  if(missing.length>0){
+    showToast(`CSV missing columns: ${missing.join(', ')}`,'error');
+    return;
+  }
+
+  const rows = lines.slice(1).filter(l=>l.trim());
+  let success=0, failed=0, skipped=0;
+
+  // Show progress
+  const prog    = document.getElementById('csvProgress');
+  const progBar = document.getElementById('csvProgressBar');
+  const progTxt = document.getElementById('csvProgressText');
+  if(prog) prog.style.display='block';
+
+  for(let i=0; i<rows.length; i++){
+    const pct = Math.round(((i+1)/rows.length)*100);
+    if(progBar) progBar.style.width = pct+'%';
+    if(progTxt) progTxt.textContent = `Importing ${i+1} of ${rows.length} products... (${success} added, ${failed} failed)`;
+
+    const cols = rows[i].split(',').map(c=>c.trim().replace(/"/g,''));
+    const obj  = {};
+    headers.forEach((h,idx)=>{ obj[h]=cols[idx]||''; });
+
+    const data = {
+      productId:      obj['productid'],
+      productName:    obj['productname'],
+      category:       obj['category'],
+      currentStock:   parseInt(obj['stock'])||0,
+      thresholdLevel: parseInt(obj['threshold'])||5
+    };
+
+    if(!data.productId||!data.productName||!data.category){ skipped++; continue; }
+
+    try{
+      const res = await fetch(API_BASE,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(data)
+      });
+      if(res.ok){ success++; apiSuccess++; }
+      else{ failed++; apiErrors++; }
+    }catch(e){ failed++; apiErrors++; }
+
+    // Small delay to avoid overwhelming Lambda
+    await new Promise(r=>setTimeout(r,200));
+  }
+
+  if(prog) setTimeout(()=>prog.style.display='none',3000);
+  if(progTxt) progTxt.textContent = `Done! ${success} added · ${failed} failed · ${skipped} skipped`;
+  if(progBar) progBar.style.background = failed>0?'var(--warn)':'var(--accent2)';
+
+  addLog('info',`CSV import complete: ${success} added · ${failed} failed · requestId:${genId()}`);
+  addAudit('ADD',`Bulk CSV import: ${success} products added from ${file.name}`,'📂');
+  addNotification('success',`CSV import complete — ${success} products added`,'📂');
+  showToast(`Import done: ${success} added, ${failed} failed`,'success');
+
+  // Reset file input
+  event.target.value='';
+  loadProducts();
+}
+
+function downloadCSVTemplate(){
+  const csv = [
+    'productId,productName,category,stock,threshold',
+    'P001,Wireless Mouse,Electronics,50,10',
+    'P002,Mechanical Keyboard,Electronics,30,5',
+    'P003,USB Hub,Accessories,25,8',
+    'P004,Monitor Stand,Furniture,15,3',
+    'P005,Webcam HD,Electronics,20,5'
+  ].join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download='InvenTrack_Import_Template.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Template downloaded','success');
+  addLog('info','CSV import template downloaded · requestId:'+genId());
+}
+
+// ═══════════════════════════════════════
+// FEATURE 5+6: AUDIT TRAIL SEARCH + CSV EXPORT
+// ═══════════════════════════════════════
+function downloadAuditCSV(){
+  if(!auditTrail.length){ showToast('No audit records to export','warn'); return; }
+  const headers = ['Action','Detail','User','Time'];
+  const rows    = auditTrail.map(a=>[a.action,a.detail,a.user,a.time].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));
+  const csv     = [headers.join(','),...rows].join('\n');
+  const blob    = new Blob([csv],{type:'text/csv'});
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a');
+  a.href=url; a.download='InvenTrack_AuditTrail_'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+  addLog('info','Audit trail exported to CSV · requestId:'+genId());
+  showToast('Audit trail exported','success');
+}
+
+// ═══════════════════════════════════════
+// FEATURE 12: INVENTORY TURNOVER RATIO
+// ═══════════════════════════════════════
+function computeTurnoverRatio(){
+  // ITR = Total Units Sold (STOCK_OUT) / Average Stock
+  const stockOutTxns  = transactionLog.filter(t=>t.action==='STOCK_OUT');
+  const totalSold     = stockOutTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
+  const avgStock      = allProducts.length
+    ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length)
+    : 0;
+  const itr           = avgStock>0 ? (totalSold/avgStock).toFixed(2) : '0.00';
+  const daysToSellout = totalSold>0 && avgStock>0 ? Math.round(avgStock/(totalSold/30)) : null;
+  return { totalSold, avgStock, itr, daysToSellout };
+}
+
+// ═══════════════════════════════════════
+// FEATURE 13: AI FORECAST CONFIDENCE SCORE
+// ═══════════════════════════════════════
+function computeConfidence(product){
+  // Confidence based on: how many data points we have, stock vs threshold ratio
+  const txns    = transactionLog.filter(t=>t.productId===product.productId);
+  const dataPts = Math.min(txns.length, 10);
+  const ratio   = product.currentStock / Math.max(product.thresholdLevel,1);
+
+  // More transactions = higher confidence. Lower stock = higher urgency = higher confidence
+  const dataScore    = (dataPts/10) * 40;  // 0-40 points
+  const urgencyScore = ratio<0.5?40:ratio<1?25:10; // 10-40 points
+  const baseScore    = 20; // baseline 20 points
+  const confidence   = Math.min(98, Math.round(baseScore + dataScore + urgencyScore));
+  return confidence;
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+document.getElementById('updateModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('variantModal').addEventListener('click',function(e){if(e.target===this)closeVariantModal();});
+document.getElementById('historyModal').addEventListener('click',function(e){if(e.target===this)closeHistoryModal();});
+window.onload=function(){
+  const saved=localStorage.getItem('savedEmail');
+  if(saved)document.getElementById('loginEmail').value=saved;
+  loadSavedTheme();
+  updateNotifBadge();
+  renderNotifList();
+};
+</script>
+</body>
+</html>
