@@ -489,6 +489,8 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
   </div>
 
   <div class="kpi-row" id="kpiRow"></div>
+  <!-- Dashboard KPI Strip - Turnover + Fill Rate -->
+  <div id="dashKpiStrip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
   <div class="stats-grid">
     <div class="stat-card blue"><span class="stat-icon">📦</span><div class="stat-label">Total Products</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">Active SKUs</div></div>
     <div class="stat-card amber"><span class="stat-icon">⚠️</span><div class="stat-label">Low Stock</div><div class="stat-value" id="statLow">—</div><div class="stat-sub">Below threshold</div></div>
@@ -513,8 +515,8 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
     </div>
     <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
       <div style="position:relative;width:130px;height:130px;flex-shrink:0">
-        <canvas id="gaugeChart" width="130" height="130"></canvas>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <canvas id="gaugeChart"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
           <div id="gaugeValue" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent2)">—</div>
           <div style="font-size:10px;color:var(--muted)">Health %</div>
         </div>
@@ -1400,6 +1402,15 @@ function updateStats(products){
     });
   }else banner.style.display='none';
   _updateMonMetrics();
+  // Render health gauge with Chart.js
+  const _hPct = allProducts.length
+    ? Math.round((allProducts.filter(p=>p.currentStock>=p.thresholdLevel).length/allProducts.length)*100)
+    : 100;
+  renderGauge(_hPct);
+  // Render dashboard KPI strip (turnover ratio etc)
+  renderDashKPIStrip();
+  // Update welcome status
+  if(typeof updateWelcomeStatus==="function") updateWelcomeStatus(0);
 }
 
 // ═══════════════════════════════════════
@@ -1440,90 +1451,119 @@ function renderInventoryKPIs(){
 }
 
 // ═══════════════════════════════════════
+// DASHBOARD KPI STRIP
+// ═══════════════════════════════════════
+function renderDashKPIStrip(){
+  const el = document.getElementById('dashKpiStrip');
+  if(!el) return;
+  const { itr, fillRate, daysToSellout, stockValue } = computeDashKPIs();
+  el.innerHTML = `
+    <div class="stat-card" style="padding:14px;text-align:center">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Turnover Ratio</div>
+      <div style="font-size:24px;font-weight:800;color:var(--purple);font-family:'Syne',sans-serif">${itr}x</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Units sold / Avg stock</div>
+    </div>
+    <div class="stat-card" style="padding:14px;text-align:center">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Fill Rate</div>
+      <div style="font-size:24px;font-weight:800;color:var(--accent2);font-family:'Syne',sans-serif">${fillRate}%</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Products above threshold</div>
+    </div>
+    <div class="stat-card" style="padding:14px;text-align:center">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Days to Sellout</div>
+      <div style="font-size:24px;font-weight:800;color:var(--warn);font-family:'Syne',sans-serif">${daysToSellout||'N/A'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">At current rate</div>
+    </div>
+    <div class="stat-card" style="padding:14px;text-align:center">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Est. Stock Value</div>
+      <div style="font-size:24px;font-weight:800;color:var(--accent);font-family:'Syne',sans-serif">₹${stockValue.toLocaleString()}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">@ avg ₹10/unit</div>
+    </div>`;
+}
+
+function computeDashKPIs(){
+  const stockOutTxns = transactionLog.filter(t=>t.action==='STOCK_OUT');
+  const totalSold    = stockOutTxns.reduce((s,t)=>s+(t.qty||t.quantity||0),0);
+  const avgStock     = allProducts.length
+    ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length)
+    : 0;
+  const itr          = avgStock>0?(totalSold/avgStock).toFixed(2):'0.00';
+  const low          = allProducts.filter(p=>p.currentStock<p.thresholdLevel).length;
+  const fillRate     = allProducts.length?Math.round(((allProducts.length-low)/allProducts.length)*100):100;
+  const daysToSellout= totalSold>0&&avgStock>0?Math.round(avgStock/(totalSold/30)):null;
+  const totalUnits   = allProducts.reduce((s,p)=>s+p.currentStock,0);
+  const stockValue   = totalUnits*10;
+  return {itr, fillRate, daysToSellout, stockValue};
+}
+
+// ═══════════════════════════════════════
 // HEALTH SCORE GAUGE
 // ═══════════════════════════════════════
 function renderGauge(score){
-  const canvas = document.getElementById('gaugeChart');
-  const valEl  = document.getElementById('gaugeValue');
-  const badge  = document.getElementById('healthScoreBadge');
-  const breakdown = document.getElementById('healthBreakdown');
-  if(!canvas) return;
-
   const pct   = Math.min(100, Math.max(0, score));
   const color = pct>=80?'#00d4aa':pct>=50?'#f59e0b':'#ef4444';
   const label = pct>=80?'Excellent':pct>=60?'Good':pct>=40?'Fair':'Critical';
-
-  // Fix canvas size explicitly
-  const size = 130;
-  canvas.width  = size;
-  canvas.height = size;
-  canvas.style.width  = size+'px';
-  canvas.style.height = size+'px';
-
-  const ctx   = canvas.getContext('2d');
-  const cx    = size/2;
-  const cy    = size/2;
-  const r     = cx - 12;
-  const start = Math.PI * 0.75;
-  const end   = Math.PI * 2.25;
-  const prog  = start + (end-start) * (pct/100);
-
-  ctx.clearRect(0,0,size,size);
-
-  // Background arc - works in both light and dark mode
-  ctx.beginPath();
-  ctx.arc(cx,cy,r,start,end);
-  ctx.strokeStyle = document.body.classList.contains('light-mode')
-    ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
-  ctx.lineWidth=14;
-  ctx.lineCap='round';
-  ctx.stroke();
-
-  // Progress arc
-  if(pct > 0){
-    ctx.beginPath();
-    ctx.arc(cx,cy,r,start,prog);
-    ctx.strokeStyle=color;
-    ctx.lineWidth=14;
-    ctx.lineCap='round';
-    ctx.stroke();
-  }
+  const valEl = document.getElementById('gaugeValue');
+  const badge = document.getElementById('healthScoreBadge');
 
   if(valEl){ valEl.textContent=pct+'%'; valEl.style.color=color; }
   if(badge){
     badge.textContent=label+' · '+pct+'%';
     badge.style.color=color;
     badge.style.borderColor=color+'40';
-    badge.style.background=color+'10';
+    badge.style.background=color+'15';
   }
 
-  // Breakdown stats
-  const allV   = Object.values(variantData).flat();
-  const combined=[...allProducts,...allV.map(v=>({currentStock:v.stock,thresholdLevel:v.threshold}))];
-  const total  = combined.length;
-  const healthy= combined.filter(p=>p.currentStock>=p.thresholdLevel).length;
-  const low    = combined.filter(p=>p.currentStock<p.thresholdLevel&&p.currentStock>=p.thresholdLevel*.5).length;
-  const crit   = combined.filter(p=>p.currentStock<p.thresholdLevel*.5).length;
-  const units  = combined.reduce((s,p)=>s+p.currentStock,0);
+  // Use Chart.js doughnut — works in light + dark mode
+  if(charts.gauge){ charts.gauge.destroy(); charts.gauge=null; }
+  const ctx = document.getElementById('gaugeChart');
+  if(!ctx) return;
+  charts.gauge = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets:[{
+        data: [pct, 100-pct],
+        backgroundColor: [color, document.body.classList.contains('light-mode')?'#e2e8f0':'rgba(255,255,255,0.07)'],
+        borderWidth: 0,
+        hoverOffset: 0
+      }]
+    },
+    options:{
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '72%',
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+      animation:{ duration:800, easing:'easeInOutQuart' },
+      events: []
+    }
+  });
 
+  // Breakdown stats
+  const allV    = Object.values(variantData).flat();
+  const combined= [...allProducts,...allV.map(v=>({currentStock:v.stock,thresholdLevel:v.threshold}))];
+  const healthy = combined.filter(p=>p.currentStock>=p.thresholdLevel).length;
+  const low     = combined.filter(p=>p.currentStock<p.thresholdLevel&&p.currentStock>=p.thresholdLevel*.5).length;
+  const crit    = combined.filter(p=>p.currentStock<p.thresholdLevel*.5).length;
+  const units   = combined.reduce((s,p)=>s+p.currentStock,0);
+  const breakdown = document.getElementById('healthBreakdown');
   if(breakdown) breakdown.innerHTML=`
     <div class="metric-card" style="text-align:center;padding:12px">
       <div style="font-size:22px;font-weight:800;color:#00d4aa">${healthy}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Healthy</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">✅ Healthy</div>
     </div>
     <div class="metric-card" style="text-align:center;padding:12px">
       <div style="font-size:22px;font-weight:800;color:#f59e0b">${low}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Low</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">⚠ Low</div>
     </div>
     <div class="metric-card" style="text-align:center;padding:12px">
       <div style="font-size:22px;font-weight:800;color:#ef4444">${crit}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Critical</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">🔴 Critical</div>
     </div>
     <div class="metric-card" style="text-align:center;padding:12px">
       <div style="font-size:22px;font-weight:800;color:#6c63ff">${units}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Total Units</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">📦 Units</div>
     </div>`;
 }
+
 
 function _updateMonMetrics(){
   const low=allProducts.filter(p=>p.currentStock<p.thresholdLevel);
