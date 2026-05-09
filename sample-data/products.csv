@@ -1,0 +1,6 @@
+productId,productName,category,currentStock,thresholdLevel
+P001,Wireless Mouse,Electronics,50,10
+P002,Mechanical Keyboard,Electronics,30,5
+P003,USB Hub,Accessories,25,8
+P004,Webcam HD,Electronics,20,5
+P005,Monitor Stand,Furniture,15,3
