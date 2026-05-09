@@ -444,6 +444,24 @@ body.staff-mode [onclick*="deleteVariant"]{display:none!important}
     <div class="topbar-actions">
       <span id="lastRefreshTime" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;align-self:center"></span>
       <button class="btn btn-secondary btn-sm" onclick="loadProducts()">↺ Refresh</button>
+      <div class="admin-only" style="position:relative;display:inline-block" id="demoDataWrapper">
+        <button class="btn btn-secondary btn-sm" onclick="toggleDemoMenu()" style="font-size:11px">📊 Demo Data ▾</button>
+        <div id="demoMenu" style="display:none;position:absolute;right:0;top:38px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:999;min-width:220px;overflow:hidden">
+          <div style="padding:8px 12px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Choose Scenario</div>
+          <button onclick="seedDemoTransactions(1)" style="width:100%;text-align:left;padding:10px 14px;background:none;border:none;cursor:pointer;font-size:12px;color:var(--text);font-family:'DM Sans',sans-serif;border-bottom:1px solid var(--border)">
+            <div style="font-weight:600;color:var(--accent2)">📈 Scenario A — High Demand</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">ITR ~4.2x · Fast movers · Low fill rate</div>
+          </button>
+          <button onclick="seedDemoTransactions(2)" style="width:100%;text-align:left;padding:10px 14px;background:none;border:none;cursor:pointer;font-size:12px;color:var(--text);font-family:'DM Sans',sans-serif;border-bottom:1px solid var(--border)">
+            <div style="font-weight:600;color:var(--warn)">⚖ Scenario B — Balanced</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">ITR ~2.4x · Mixed movers · Healthy stock</div>
+          </button>
+          <button onclick="seedDemoTransactions(3)" style="width:100%;text-align:left;padding:10px 14px;background:none;border:none;cursor:pointer;font-size:12px;color:var(--text);font-family:'DM Sans',sans-serif">
+            <div style="font-weight:600;color:var(--accent)">🐢 Scenario C — Slow Moving</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">ITR ~0.8x · Slow movers · Overstocked</div>
+          </button>
+        </div>
+      </div>
       <div style="position:relative;display:inline-block">
         <button class="btn btn-secondary btn-sm" id="bellBtn" onclick="toggleNotifCenter()" style="font-size:15px;padding:5px 10px;position:relative">
           🔔<span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--danger);color:white;border-radius:50%;width:17px;height:17px;font-size:9px;font-weight:700;align-items:center;justify-content:center;font-family:'Syne',sans-serif">0</span>
@@ -3159,6 +3177,137 @@ function startAnalyticsAutoRefresh(){
 function stopAnalyticsAutoRefresh(){
   if(analyticsAutoRefreshTimer) clearInterval(analyticsAutoRefreshTimer);
   analyticsAutoRefreshTimer = null;
+}
+
+// ═══════════════════════════════════════
+// DEMO DATA SEEDER — 3 scenarios
+// ═══════════════════════════════════════
+function toggleDemoMenu(){
+  const menu = document.getElementById('demoMenu');
+  if(!menu) return;
+  menu.style.display = menu.style.display==='none' ? 'block' : 'none';
+}
+
+// Close demo menu when clicking outside
+document.addEventListener('click', function(e){
+  const wrapper = document.getElementById('demoDataWrapper');
+  const menu    = document.getElementById('demoMenu');
+  if(wrapper && menu && !wrapper.contains(e.target)){
+    menu.style.display='none';
+  }
+});
+
+function seedDemoTransactions(scenario=1){
+  const menu = document.getElementById('demoMenu');
+  if(menu) menu.style.display='none';
+
+  if(!allProducts.length){ showToast('Load products first','warn'); return; }
+
+  // Clear existing demo transactions
+  transactionLog = transactionLog.filter(t=>!t.isDemo);
+
+  const now = Date.now();
+  const day = 86400000;
+  let count = 0;
+
+  const scenarios = {
+    1: { // HIGH DEMAND — ITR ~4.2x
+      name: 'High Demand',
+      emoji: '📈',
+      dailyMultiplier: 0.18,  // 18% of stock sold daily
+      restockDays: 5,          // restock every 5 days
+      restockMultiplier: 6,    // restock 6 days worth
+      variance: 4,             // high variance in daily sales
+      days: 30
+    },
+    2: { // BALANCED — ITR ~2.4x
+      name: 'Balanced',
+      emoji: '⚖',
+      dailyMultiplier: 0.08,
+      restockDays: 7,
+      restockMultiplier: 8,
+      variance: 2,
+      days: 30
+    },
+    3: { // SLOW MOVING — ITR ~0.8x
+      name: 'Slow Moving',
+      emoji: '🐢',
+      dailyMultiplier: 0.02,  // 2% of stock sold daily
+      restockDays: 14,         // restock every 2 weeks
+      restockMultiplier: 20,   // restock 20 days worth
+      variance: 1,
+      days: 30
+    }
+  };
+
+  const s = scenarios[scenario];
+
+  allProducts.forEach((p, idx) => {
+    const baseRate = Math.max(1, Math.floor(p.currentStock * s.dailyMultiplier) + (idx%2));
+
+    // Daily STOCK_OUT (sales)
+    for(let d = s.days-1; d >= 0; d--){
+      const qty = Math.max(1, baseRate + Math.floor(Math.random()*s.variance));
+      transactionLog.push({
+        productId:     p.productId,
+        productName:   p.productName,
+        action:        'STOCK_OUT',
+        qty, quantity: qty,
+        prevStock:     p.currentStock+qty,
+        newStock:      p.currentStock,
+        previousStock: p.currentStock+qty,
+        user:          'sales-system',
+        performedBy:   'sales-system',
+        txnId:         'TXN-S'+scenario+'-'+genId(),
+        time:          new Date(now-d*day).toLocaleTimeString(),
+        ts:            now-d*day-Math.random()*3600000,
+        isDemo:        true
+      });
+      count++;
+    }
+
+    // Periodic STOCK_IN (restocks)
+    const restockCount = Math.ceil(s.days/s.restockDays);
+    for(let r=0; r<restockCount; r++){
+      const restockQty = Math.max(5, baseRate*s.restockMultiplier);
+      transactionLog.push({
+        productId:     p.productId,
+        productName:   p.productName,
+        action:        'STOCK_IN',
+        qty:           restockQty,
+        quantity:      restockQty,
+        prevStock:     p.currentStock,
+        newStock:      p.currentStock+restockQty,
+        previousStock: p.currentStock,
+        user:          'admin',
+        performedBy:   'admin',
+        txnId:         'TXN-RESTOCK-'+genId(),
+        time:          new Date(now-(r*s.restockDays+2)*day).toLocaleTimeString(),
+        ts:            now-(r*s.restockDays+2)*day,
+        isDemo:        true
+      });
+      count++;
+    }
+  });
+
+  // Sort newest first
+  transactionLog.sort((a,b)=>b.ts-a.ts);
+
+  // Update all KPIs
+  renderDashKPIStrip();
+  renderInventoryKPIs();
+  renderKPIChips(allProducts);
+
+  // Compute ITR to show in toast
+  const stockOut = transactionLog.filter(t=>t.action==='STOCK_OUT'&&t.isDemo);
+  const totalSold = stockOut.reduce((sum,t)=>sum+(t.qty||0),0);
+  const avgStk = allProducts.length ? Math.round(allProducts.reduce((s,p)=>s+p.currentStock,0)/allProducts.length) : 1;
+  const itr = (totalSold/avgStk).toFixed(2);
+
+  addLog('info',`Demo Scenario ${scenario} (${s.name}) seeded: ${count} txns · ITR:${itr}x · requestId:${genId()}`);
+  addAudit('ADD',`Demo Scenario ${scenario} — ${s.name}: ${count} transactions loaded`,'📊');
+  showToast(`${s.emoji} Scenario ${scenario}: ${s.name} loaded · ITR: ${itr}x · ${count} transactions`,'success');
+  addNotification('info',`Demo Scenario ${scenario} (${s.name}) — ITR: ${itr}x · ${count} transactions generated`,'📊');
 }
 
 // ═══════════════════════════════════════
